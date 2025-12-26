@@ -47,15 +47,23 @@ export default function InputFields() {
         return pattern.test(url);
     };
 
-    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const url = e.target.value;
-        setPlaylistUrl(url);
-        setIsValidUrl(validateUrl(url) || url === "");
+    const validateUrls = (urls: string) => {
+        if (!urls.trim()) return true;
+        const urlList = urls.split('\n').filter(u => u.trim());
+        return urlList.every(url => validateUrl(url.trim()));
+    };
+
+    const handleUrlChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const urls = e.target.value;
+        setPlaylistUrl(urls);
+        setIsValidUrl(validateUrls(urls));
     };
 
     async function clonePlaylist() {
+        const urlList = playlistUrl.split('\n').filter(u => u.trim()).map(u => u.trim());
+
         const body = {
-            playlist_link: playlistUrl,
+            playlist_links: urlList,
             auth_headers: authHeaders,
         };
 
@@ -71,10 +79,29 @@ export default function InputFields() {
             const data = await res.json();
 
             if (res.ok) {
-                if (data.missed_tracks.count > 0) {
-                    setMissedTracks(data.missed_tracks);
+                // Collect all missed tracks from all playlists
+                let totalMissed = 0;
+                let allMissedTracks: string[] = [];
+
+                data.results?.forEach((result: any) => {
+                    if (result.status === "success" && result.missed_tracks?.count > 0) {
+                        totalMissed += result.missed_tracks.count;
+                        allMissedTracks = allMissedTracks.concat(
+                            result.missed_tracks.tracks.map(
+                                (track: string) => `[${result.playlist_name}] ${track}`
+                            )
+                        );
+                    }
+                });
+
+                if (totalMissed > 0) {
+                    setMissedTracks({
+                        count: totalMissed,
+                        tracks: allMissedTracks,
+                    });
                     setMissedTracksDialog(true);
                 }
+
                 setStarPrompt(true);
             } else if (res.status === 500) {
                 setCloneError(true);
@@ -215,12 +242,18 @@ export default function InputFields() {
                     <div className="flex flex-col gap-3 items-start justify-center">
                         <div className="space-y-1">
                             <h1 className="text-lg font-semibold">
-                                Paste Spotify playlist URL here
+                                Paste Spotify playlist URL(s) here
                             </h1>
                             <div className="flex items-center gap-2">
                                 <FaExclamationCircle />
                                 <p className="text-sm text-gray-500">
-                                    Make sure the playlist is public
+                                    Make sure the playlist(s) are public
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <FaExclamationCircle className="text-blue-500" />
+                                <p className="text-sm text-gray-500">
+                                    You can paste multiple URLs (one per line)
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 mt-2">
@@ -240,18 +273,18 @@ export default function InputFields() {
                                 </p>
                             </div>
                         </div>
-                        <Input
-                            placeholder="Paste your playlist URL here"
+                        <Textarea
+                            placeholder="Paste your playlist URL(s) here (one per line)"
                             value={playlistUrl}
                             onChange={handleUrlChange}
-                            id="playlist-name"
-                            className={`w-full ${
+                            id="playlist-urls"
+                            className={`w-full min-h-[100px] ${
                                 !isValidUrl ? "border-red-500" : ""
                             }`}
                         />
                         {!isValidUrl && (
                             <p className="text-red-500 text-sm">
-                                Please enter a valid Spotify playlist URL
+                                Please enter valid Spotify playlist URL(s)
                             </p>
                         )}
                         <AlertDialog
@@ -275,10 +308,10 @@ export default function InputFields() {
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>
-                                        Fetching playlist...
+                                        Cloning playlist(s)...
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This may take a few minutes
+                                        This may take a few minutes. Check the server console for progress updates.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                             </AlertDialogContent>
@@ -293,7 +326,7 @@ export default function InputFields() {
                                     <AlertDialogTitle>
                                         <div className="flex items-center">
                                             <CheckIcon />
-                                            Your Playlist has been cloned!
+                                            Your Playlist(s) have been cloned!
                                         </div>
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
