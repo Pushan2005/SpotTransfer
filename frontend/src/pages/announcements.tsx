@@ -96,6 +96,14 @@ Recent improvements include:
 Self-hosting provides unlimited transfers without server timeout restrictions.`,
         type: "info",
     },
+    {
+        id: "8",
+        date: "December 31, 2025",
+        title: "Improved Header Parsing for Chrome Users",
+        content: `Improved header parsing logic to make it easier for Chrome users. Courtesy of @LifeRIP's contribution.
+`,
+        type: "success",
+    },
 ];
 
 function getTypeIcon(type: Announcement["type"]) {

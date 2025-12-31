@@ -1,20 +1,14 @@
 # SpotTransfer
 
-## 🚀 Overview
+## Overview
 
 SpotTransfer lets you instantly migrate any Spotify playlist to YouTube Music—no manual copy-pasting needed.
 
-## ✨ Star History
+[![](https://api.star-history.com/svg?repos=Pushan2005/SpotTransfer&type=date&legend=top-left)](https://www.star-history.com/#Pushan2005/SpotTransfer&type=date&legend=top-left)
 
-<a href="https://www.star-history.com/#Pushan2005/SpotTransfer&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Pushan2005/SpotTransfer&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Pushan2005/SpotTransfer&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Pushan2005/SpotTransfer&type=Date" />
- </picture>
-</a>
+<!-- start history service seems to be down -->
 
-## 🎯 Quick Start
+## Quick Start
 
 Prerequisites:
 
