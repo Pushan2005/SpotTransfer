@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  spottransfer-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: spottransfer-backend
+    image: spottransfer-backend:latest
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      # FRONTEND_URL as seen from the browser for CORS
+      - FRONTEND_URL=http://localhost:5173
+    networks:
+      - spottransfer-network
+
+  spottransfer-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: spottransfer-frontend
+    image: spottransfer-frontend:latest
+    ports:
+      - "5173:5173"
+    environment:
+      # Point frontend to backend’s internal hostname
+      - VITE_API_URL=http://spottransfer-backend:8080
+    depends_on:
+      - spottransfer-backend
+    networks:
+      - spottransfer-network
+
+networks:
+  spottransfer-network:
+    driver: bridge

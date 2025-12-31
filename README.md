@@ -60,3 +60,23 @@ cd SpotTransfer
     ```
     If you wish, you can build the app and serve it as well but the dev server works just fine for now.
 4. Open your browser and go to `http://localhost:5173`.
+
+## 🐳 Docker
+
+If you are already familiar with docker, then self hosting SpotTransfer will become much simpler.
+
+1. Clone the repo.
+    ```bash
+    git clone https://github.com/Pushan2005/SpotTransfer.git
+    cd SpotTransfer
+    ```
+2. Create an `.env` file and add your Spotify credentials (get these from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)):
+    ```env
+    SPOTIPY_CLIENT_ID=<your_spotify_client_id>
+    SPOTIPY_CLIENT_SECRET=<your_spotify_client_secret>
+    ```
+3. Build and run both containers
+    ```bash
+    docker compose up -d --build
+    ```
+4. Open your browser and go to `http://localhost:5173`.
