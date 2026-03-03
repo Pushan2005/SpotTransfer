@@ -104,6 +104,16 @@ Self-hosting provides unlimited transfers without server timeout restrictions.`,
 `,
         type: "success",
     },
+    {
+        id: "9",
+        date: "March 3, 2026",
+        title: "Possible shutdown of SpotTransfer",
+        content: `Due to the February 2026 changes made to Spotify's API and it's policies and the increasing difficulty in maintaining the service, there is a possibility that SpotTransfer may need to be shut down in the near future. I am currently exploring all options to keep the service running.
+        
+        The app will continue to work until March 9, 2026. I cannot guarantee that the app will work after that date. In the situation that the app DOES shut down, I want to thank everyone who has used and supported SpotTransfer. It has been an absolutly amazing journey building and maintaining this project, and I am grateful for all the postive responses and feedback from you guys. 
+        `,
+        type: "warning",
+    },
 ];
 
 function getTypeIcon(type: Announcement["type"]) {
