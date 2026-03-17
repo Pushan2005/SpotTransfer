@@ -33,11 +33,14 @@ cd SpotTransfer
     ```bash
     pip install -r requirements.txt
     ```
-3. Rename `.env.example` to `.env` and add your Spotify credentials (get these from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)):
+3. Rename `.env.example` to `.env` and add your Spotify credentials (get these from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)):  
+
     ```env
     SPOTIPY_CLIENT_ID=<your_spotify_client_id>
     SPOTIPY_CLIENT_SECRET=<your_spotify_client_secret>
     ```
+    **Important note** - Spotify has made changes to their API where users will now require a Spotify Premium Subscription in order to use the API. Please make sure to get these credentials from an account that has a premium subscription (the Spotify account you get the credentials from doesn't have to be the same account where the playlists are, a friend's account with a subscription also works)  
+
 4. Start the Flask server:
     ```bash
     python3 main.py
