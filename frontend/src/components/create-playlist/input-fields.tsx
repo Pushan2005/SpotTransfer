@@ -88,12 +88,12 @@ export default function InputFields() {
                         >
                             report this issue
                         </a>
-                    </>
+                    </>,
                 );
             } else {
                 setCloneError(true);
                 setCloneErrorMessage(
-                    data.message || "Failed to clone playlist"
+                    data.message || "Failed to clone playlist",
                 );
             }
         } catch {
@@ -133,7 +133,7 @@ export default function InputFields() {
                             report this issue on GitHub
                         </a>
                         .
-                    </>
+                    </>,
                 );
             }
         } catch {
@@ -148,7 +148,7 @@ export default function InputFields() {
                     >
                         open an issue on GitHub
                     </a>
-                </>
+                </>,
             );
         } finally {
             setConnectionDialogOpen(false);
@@ -161,12 +161,12 @@ export default function InputFields() {
                 <div className="flex flex-col gap-3 items-center justify-center">
                     <div className="space-y-1">
                         <h1 className="text-lg font-semibold">
-                            Paste headers here
+                            Paste YouTube Music auth headers here
                         </h1>
                         <p className="text-sm text-gray-500"></p>
                     </div>
                     <Textarea
-                        placeholder="Paste your headers here"
+                        placeholder="Paste your YouTube Music auth headers here"
                         value={authHeaders}
                         onChange={(e) => setAuthHeaders(e.target.value)}
                         id="auth-headers"
@@ -178,11 +178,11 @@ export default function InputFields() {
                     <div className="flex flex-col w-full gap-3 items-center justify-center">
                         <div className="space-y-1 w-full">
                             <h1 className="text-lg font-semibold w-full">
-                                You need to be connected to the server
+                                You need to be logged in to Spotify
                             </h1>
                             {serverOnline && (
                                 <p className="text-green-500 text-sm">
-                                    Connection Successful
+                                    Login Successful
                                 </p>
                             )}
                         </div>
@@ -387,7 +387,7 @@ export default function InputFields() {
                                                 >
                                                     {track}
                                                 </li>
-                                            )
+                                            ),
                                         )}
                                     </ul>
                                 </div>

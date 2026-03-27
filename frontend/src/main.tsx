@@ -8,6 +8,7 @@ import "./index.css";
 import App from "./pages/App.tsx";
 import CreatePlaylist from "./pages/create-playlist.tsx";
 import Announcements from "./pages/announcements.tsx";
+import LoginPage from "./pages/login-page.tsx";
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
@@ -24,9 +25,10 @@ createRoot(document.getElementById("root")!).render(
                             path="/announcements"
                             element={<Announcements />}
                         />
+                        <Route path="/login" element={<LoginPage />} />
                     </Routes>
                 </BrowserRouter>
             </ThemeProvider>
         </PlaylistProvider>
-    </StrictMode>
+    </StrictMode>,
 );
