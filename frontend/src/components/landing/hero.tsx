@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import Navbar from "@/nav-bar.tsx";
 import { Link } from "react-router-dom";
 import { usePlaylist } from "@/context/playlist-context";
+import { FaGithub } from "react-icons/fa";
 
 export default function Hero() {
     const { playlistUrl, setPlaylistUrl } = usePlaylist();
@@ -13,7 +14,17 @@ export default function Hero() {
                 <Navbar />
                 <div className="flex flex-col items-center mt-24 md:mt-32 lg:mt-40">
                     <div className="text-center max-w-2xl mx-auto">
-                        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-bold tracking-tight leading-[1.1] text-foreground">
+                        <a
+                            href="https://github.com/Pushan2005/SpotTransfer"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-primary/20 via-primary to-primary/20 text-primary-foreground text-sm font-medium hover:brightness-110 transition-all"
+                        >
+                            <FaGithub className="w-4 h-4" />
+                            Star this on GitHub ⭐
+                        </a>
+
+                        <h1 className="mt-8 text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-bold tracking-tight leading-[1.1] text-foreground">
                             Transfer your Spotify
                             <br />
                             playlist to{" "}
@@ -37,14 +48,6 @@ export default function Hero() {
                                 </Button>
                             </Link>
                         </div>
-
-                        <a
-                            href="https://github.com/Pushan2005/SpotTransfer"
-                            className="inline-flex items-center gap-1.5 mt-6 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-                            View source on GitHub
-                        </a>
                     </div>
                 </div>
             </div>
