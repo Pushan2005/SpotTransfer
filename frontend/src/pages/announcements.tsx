@@ -112,6 +112,19 @@ Self-hosting provides unlimited transfers without server timeout restrictions.`,
 The app will continue to work until March 9, 2026. I cannot guarantee that the app will work after that date. In the situation that the app DOES shut down, I want to thank everyone who has used and supported SpotTransfer. It has been an absolutely amazing journey building and maintaining this project, and I am grateful for all the positive responses and feedback from you guys.`,
         type: "warning",
     },
+    {
+        id: "10",
+        date: "July 24, 2026",
+        title: "SpotTransfer is mostly down",
+        content: `So, the bad news is here. Spotify has changed their API policies in a way that pretty much makes it impossible for individual developers to use the API anymore. This means SpotTransfer is effectively down across most regions.
+
+This is unfortunately where things stand until I figure out a legal workaround :(
+
+Open to suggestions. If you have any, please reach out to me on GitHub.
+
+`,
+        type: "error",
+    },
 ];
 
 function getTypeStyles(type: Announcement["type"]) {
@@ -152,18 +165,18 @@ export default function Announcements() {
                                         <div className="flex items-start gap-4">
                                             <span
                                                 className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-medium shrink-0 mt-0.5 ${getTypeStyles(
-                                                    announcement.type
+                                                    announcement.type,
                                                 )}`}
                                             >
                                                 {announcement.type === "warning"
                                                     ? "!"
                                                     : announcement.type ===
-                                                      "success"
-                                                    ? "\u2713"
-                                                    : announcement.type ===
-                                                      "error"
-                                                    ? "\u2717"
-                                                    : "i"}
+                                                        "success"
+                                                      ? "\u2713"
+                                                      : announcement.type ===
+                                                          "error"
+                                                        ? "\u2717"
+                                                        : "i"}
                                             </span>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-baseline gap-3 flex-wrap">
