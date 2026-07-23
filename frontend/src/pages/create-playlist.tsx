@@ -6,23 +6,23 @@ export default function CreatePlaylist() {
     return (
         <>
             {/* Mobile View */}
-            <main className="lg:hidden flex w-screen h-screen flex-col items-center justify-center p-4">
-                <h2 className="text-2xl font-bold text-center text-neutral-800 dark:text-white">
-                    You need a laptop to use the tool
-                    <p className="m-4 text-sm text-neutral-500 dark:text-neutral-400 font-normal">
-                        {"(Enter full screen mode if you're on a laptop/PC)"}
-                    </p>
+            <main className="lg:hidden flex w-screen h-screen flex-col items-center justify-center p-6">
+                <h2 className="text-xl font-semibold text-center text-foreground">
+                    Open this on a desktop
                 </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                    SpotTransfer works best on a laptop or desktop browser.
+                </p>
             </main>
 
             {/* Desktop View */}
-            <main className="hidden lg:flex w-screen flex-col items-center justify-center">
-                <div className="mb-10">
-                    <GetHeaders />
+            <main className="hidden lg:flex w-screen flex-col items-center">
+                <GetHeaders />
+                <div className="w-full max-w-[1000px] mx-auto px-4 mt-8">
+                    <h2 className="text-sm font-medium text-primary mb-6 tracking-wide uppercase">
+                        Transfer
+                    </h2>
                 </div>
-                <h2 className="my-10 text-center mb-3 text-2xl font-bold mx-auto relative z-20 py-4 bg-clip-text text-transparent bg-gradient-to-b from-neutral-800 via-neutral-700 to-neutral-700 dark:from-neutral-800 dark:via-white dark:to-white w-full">
-                    Create Playlist
-                </h2>
                 <InputFields />
                 <Footer />
             </main>

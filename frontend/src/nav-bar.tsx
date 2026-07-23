@@ -3,30 +3,29 @@ import { Link } from "react-router-dom";
 
 export default function Navbar() {
     return (
-        <nav className="flex w-full justify-between items-center mt-6 px-4 sm:px-10">
+        <nav className="flex w-full justify-between items-center px-4 sm:px-10 py-5">
             <Link
                 to="/"
-                className="text-lg font-medium text-black hover:text-zinc-700"
+                className="flex items-center gap-1.5 text-foreground"
             >
-                <span className="bg-gradient-to-r from-white via-zinc-300 to-zinc-400 text-transparent bg-clip-text font-bold text-2xl">
+                <span className="inline-block w-2 h-2 rounded-full bg-primary" />
+                <span className="text-lg font-semibold tracking-tight">
                     SpotTransfer
                 </span>
             </Link>
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-6">
                 <Link
                     to="/announcements"
-                    className="text-black dark:text-white hover:text-zinc-700 dark:hover:text-zinc-300 text-lg font-medium transition-colors"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                     Announcements
                 </Link>
                 <a
                     href="https://github.com/Pushan2005/SpotTransfer"
-                    className="text-black dark:text-white hover:text-zinc-700 flex items-center"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
                 >
-                    <FaGithub className="w-6 h-6 sm:mr-2" />
-                    <span className="hidden sm:inline text-lg font-medium">
-                        GitHub
-                    </span>
+                    <FaGithub className="w-4 h-4" />
+                    <span className="hidden sm:inline">GitHub</span>
                 </a>
             </div>
         </nav>

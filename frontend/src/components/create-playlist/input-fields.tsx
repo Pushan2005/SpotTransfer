@@ -84,7 +84,7 @@ export default function InputFields() {
                         or{" "}
                         <a
                             href="https://github.com/Pushan2005/SpotTransfer/issues/new/choose"
-                            className="text-blue-500 hover:underline"
+                            className="text-primary hover:underline"
                         >
                             report this issue
                         </a>
@@ -128,7 +128,7 @@ export default function InputFields() {
                         Please try again later or{" "}
                         <a
                             href="https://github.com/Pushan2005/SpotTransfer/issues/new/choose"
-                            className="text-blue-500 hover:underline"
+                            className="text-primary hover:underline"
                         >
                             report this issue on GitHub
                         </a>
@@ -144,7 +144,7 @@ export default function InputFields() {
                     contact me or{" "}
                     <a
                         href="https://github.com/Pushan2005/SpotTransfer/issues/new/choose"
-                        className="text-blue-500 hover:underline"
+                        className="text-primary hover:underline"
                     >
                         open an issue on GitHub
                     </a>
@@ -157,32 +157,32 @@ export default function InputFields() {
 
     return (
         <>
-            <div className="w-full flex items-center justify-around">
-                <div className="flex flex-col gap-3 items-center justify-center">
-                    <div className="space-y-1">
-                        <h1 className="text-lg font-semibold">
-                            Paste headers here
-                        </h1>
-                        <p className="text-sm text-gray-500"></p>
-                    </div>
+            <div className="w-full max-w-[1000px] mx-auto px-4 flex flex-col lg:flex-row items-start justify-center gap-10 lg:gap-16 pb-12">
+                {/* Left: Headers textarea */}
+                <div className="flex-1 w-full space-y-3">
+                    <label className="text-sm font-medium text-foreground">
+                        Paste headers here
+                    </label>
                     <Textarea
                         placeholder="Paste your headers here"
                         value={authHeaders}
                         onChange={(e) => setAuthHeaders(e.target.value)}
                         id="auth-headers"
-                        className="w-[40vw] h-[50vh]"
+                        className="w-full min-h-[300px] lg:min-h-[400px] font-mono text-xs"
                     />
                 </div>
 
-                <div className="flex flex-col gap-12 items-start justify-center">
-                    <div className="flex flex-col w-full gap-3 items-center justify-center">
-                        <div className="space-y-1 w-full">
-                            <h1 className="text-lg font-semibold w-full">
-                                You need to be connected to the server
-                            </h1>
+                {/* Right: Controls */}
+                <div className="flex-1 w-full space-y-8">
+                    {/* Connection section */}
+                    <div className="space-y-3">
+                        <div>
+                            <h3 className="text-sm font-medium text-foreground">
+                                Connect to server
+                            </h3>
                             {serverOnline && (
-                                <p className="text-green-500 text-sm">
-                                    Connection Successful
+                                <p className="text-xs text-primary mt-1">
+                                    Connected
                                 </p>
                             )}
                         </div>
@@ -192,65 +192,65 @@ export default function InputFields() {
                         >
                             <AlertDialogTrigger asChild>
                                 <Button
+                                    variant={serverOnline ? "secondary" : "default"}
                                     className="w-full"
                                     onClick={testConnection}
                                 >
-                                    Connect
+                                    {serverOnline ? "Reconnect" : "Connect"}
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>
-                                        Requesting connection...
+                                        Connecting...
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        Please wait till the server comes
-                                        online. This may take upto a minute.
+                                        Please wait while the server comes
+                                        online. This may take up to a minute.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                             </AlertDialogContent>
                         </AlertDialog>
                     </div>
 
-                    <div className="flex flex-col gap-3 items-start justify-center">
-                        <div className="space-y-1">
-                            <h1 className="text-lg font-semibold">
-                                Paste Spotify playlist URL here
-                            </h1>
-                            <div className="flex items-center gap-2">
-                                <FaExclamationCircle />
-                                <p className="text-sm text-gray-500">
-                                    Make sure the playlist is public
+                    {/* Playlist URL section */}
+                    <div className="space-y-3">
+                        <div>
+                            <h3 className="text-sm font-medium text-foreground">
+                                Spotify playlist URL
+                            </h3>
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                                <FaExclamationCircle className="text-muted-foreground w-3 h-3" />
+                                <p className="text-xs text-muted-foreground">
+                                    The playlist must be public
                                 </p>
                             </div>
-                            <div className="flex items-center gap-2 mt-2">
-                                <FaExclamationCircle className="text-orange-500" />
-                                <p className="text-sm text-gray-500">
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <FaExclamationCircle className="text-amber-500 w-3 h-3" />
+                                <p className="text-xs text-muted-foreground">
                                     Timeout issues are common due to server
-                                    limitations.
-                                    <br />
-                                    If you experience them, consider{" "}
+                                    limitations.{" "}
                                     <a
                                         href="https://github.com/Pushan2005/SpotTransfer/?tab=readme-ov-file#-quick-start"
-                                        className="text-blue-500 hover:underline"
+                                        className="text-primary hover:underline"
                                     >
-                                        self-hosting
+                                        Self-host
                                     </a>{" "}
                                     for better reliability.
                                 </p>
                             </div>
                         </div>
                         <Input
-                            placeholder="Paste your playlist URL here"
+                            placeholder="open.spotify.com/playlist/..."
                             value={playlistUrl}
                             onChange={handleUrlChange}
                             id="playlist-name"
                             className={`w-full ${
-                                !isValidUrl ? "border-red-500" : ""
+                                !isValidUrl ? "border-destructive" : ""
                             }`}
                         />
                         {!isValidUrl && (
-                            <p className="text-red-500 text-sm">
+                            <p className="text-destructive text-xs">
                                 Please enter a valid Spotify playlist URL
                             </p>
                         )}
@@ -278,55 +278,52 @@ export default function InputFields() {
                                         Fetching playlist...
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This may take a few minutes
+                                        This may take a few minutes.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
-                            </AlertDialogContent>
-                        </AlertDialog>
-
-                        <AlertDialog
-                            open={starPrompt}
-                            onOpenChange={setStarPrompt}
-                        >
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>
-                                        <div className="flex items-center">
-                                            <CheckIcon />
-                                            Your Playlist has been cloned!
-                                        </div>
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        <div className="ml-12 mb-2">
-                                            <p>
-                                                Please consider starring the
-                                                project on GitHub.
-                                            </p>
-                                            <p>It's free and helps me a lot!</p>
-                                        </div>
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <div className="flex items-center justify-between w-full">
-                                        <Button>
-                                            <a
-                                                className="w-full flex items-center gap-2"
-                                                href="https://github.com/Pushan2005/SpotTransfer"
-                                            >
-                                                ⭐ on GitHub
-                                                <FaGithub className="w-6 h-6" />
-                                            </a>
-                                        </Button>
-                                        <AlertDialogAction>
-                                            Clone Another Playlist
-                                        </AlertDialogAction>
-                                    </div>
-                                </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
                     </div>
                 </div>
             </div>
+
+            {/* Success dialog */}
+            <AlertDialog open={starPrompt} onOpenChange={setStarPrompt}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            <div className="flex items-center gap-2">
+                                <CheckIcon />
+                                Playlist cloned
+                            </div>
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            <p className="mt-1">
+                                Please consider starring the project on GitHub.
+                                It's free and helps a lot.
+                            </p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <div className="flex items-center justify-between w-full">
+                            <Button variant="outline" size="sm">
+                                <a
+                                    className="flex items-center gap-1.5"
+                                    href="https://github.com/Pushan2005/SpotTransfer"
+                                >
+                                    Star on GitHub
+                                    <FaGithub className="w-4 h-4" />
+                                </a>
+                            </Button>
+                            <AlertDialogAction>
+                                Clone Another
+                            </AlertDialogAction>
+                        </div>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Connection error dialog */}
             <AlertDialog
                 open={connectionError}
                 onOpenChange={setConnectionError}
@@ -347,6 +344,8 @@ export default function InputFields() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Clone error dialog */}
             <AlertDialog open={cloneError} onOpenChange={setCloneError}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -362,6 +361,8 @@ export default function InputFields() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Missed tracks dialog */}
             <AlertDialog
                 open={missedTracksDialog}
                 onOpenChange={setMissedTracksDialog}

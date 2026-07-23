@@ -2,19 +2,25 @@ import { FaGithub } from "react-icons/fa";
 
 export function Footer() {
     return (
-        <footer className="border-t w-full mt-28 py-12 text-center text-sm text-gray-500">
-            <div className="container mx-auto px-4">
-                <p className="mb-2">
+        <footer className="w-full border-t border-border mt-20">
+            <div className="max-w-[960px] mx-auto px-4 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-sm font-semibold text-foreground">
+                        SpotTransfer
+                    </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
                     Built by{" "}
                     <a
                         href="https://github.com/pushan2005"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-medium text-gray-700 hover:text-gray-900 transition-colors inline-flex items-center gap-1"
+                        className="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
                     >
                         @pushan2005
-                        <FaGithub className="w-4 h-4" />
-                    </a>{" "}
+                        <FaGithub className="w-3.5 h-3.5" />
+                    </a>
                 </p>
             </div>
         </footer>
