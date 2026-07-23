@@ -1,10 +1,67 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
         <link rel="icon" type="image/svg+xml" href="/favicon.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>SpotTransfer</title>
+
+        <title>
+            SpotTransfer – Transfer Spotify Playlists to YouTube Music
+        </title>
+        <meta
+            name="description"
+            content="Free tool to transfer your Spotify playlists to YouTube Music. Fast, open-source, and works in your browser."
+        />
+        <link rel="canonical" href="https://spot-transfer.vercel.app/" />
+
+        <!-- Open Graph -->
+        <meta property="og:type" content="website" />
+        <meta
+            property="og:title"
+            content="SpotTransfer – Transfer Spotify Playlists to YouTube Music"
+        />
+        <meta
+            property="og:description"
+            content="Free tool to transfer your Spotify playlists to YouTube Music. Fast, open-source, and works in your browser."
+        />
+        <meta property="og:url" content="https://spot-transfer.vercel.app/" />
+        <meta
+            property="og:image"
+            content="https://spot-transfer.vercel.app/og-image.png"
+        />
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+            name="twitter:title"
+            content="SpotTransfer – Transfer Spotify Playlists to YouTube Music"
+        />
+        <meta
+            name="twitter:description"
+            content="Free tool to transfer your Spotify playlists to YouTube Music. Fast, open-source, and works in your browser."
+        />
+        <meta
+            name="twitter:image"
+            content="https://spot-transfer.vercel.app/og-image.png"
+        />
+
+        <!-- Structured Data -->
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "SoftwareApplication",
+                "name": "SpotTransfer",
+                "url": "https://spot-transfer.vercel.app/",
+                "applicationCategory": "MusicApplication",
+                "operatingSystem": "Web",
+                "description": "Free tool to transfer your Spotify playlists to YouTube Music. Fast, open-source, and works in your browser.",
+                "offers": {
+                    "@type": "Offer",
+                    "price": "0",
+                    "priceCurrency": "USD"
+                }
+            }
+        </script>
     </head>
     <body>
         <div id="root"></div>

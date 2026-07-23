@@ -1,0 +1,22 @@
+# SpotTransfer
+
+Transfer your Spotify playlists to YouTube Music.
+
+## What it does
+
+SpotTransfer is a free, open-source web app that lets you move your Spotify playlists over to YouTube Music. Sign in with both accounts, pick your playlists, and it handles the matching and creation.
+
+## Tech stack
+
+- Frontend: React + TypeScript (Vite), deployed on Vercel
+- Backend: Node.js/Express
+
+## Notes
+
+Spotify API access for this kind of transfer requires Premium developer credentials. The app handles auth via OAuth for both Spotify and YouTube Music.
+
+## Links
+
+- Live app: https://spot-transfer.vercel.app/
+- GitHub repo: https://github.com/Pushan2005/SpotTransfer
+- License: MIT
