@@ -1,15 +1,19 @@
 import multiprocessing
 
 # Server socket
-bind = "0.0.0.0:8080"
+bind = "127.0.0.1:8081"
 workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = 'sync'
+# Keep slow client sockets from consuming an entire process pool. Public
+# traffic should enter through the nginx configuration in deploy/, which adds
+# the actual header/body read timeouts.
+worker_class = 'gthread'
+threads = 4
 timeout = 900
 
 # Worker settings
 max_requests = 1000
 max_requests_jitter = 50
-keepalive = 500 
+keepalive = 5
 
 # Logging
 accesslog = '-'

@@ -1,5 +1,7 @@
 from ytmusicapi import YTMusic
 import ytmusicapi
+import os
+import tempfile
 from spotify import get_all_tracks, get_playlist_name
 
 
@@ -10,7 +12,7 @@ def parse_headers(headers_text):
     - Standard format: "header: value"
     - Plain format: "header\\nvalue\\nheader2\\nvalue2"
     """
-    if not headers_text or not headers_text.strip():
+    if not isinstance(headers_text, str) or not headers_text.strip():
         raise Exception("Headers cannot be empty")
     
     lines = [line.strip() for line in headers_text.strip().split('\n') if line.strip()]
@@ -86,14 +88,29 @@ def get_video_ids(ytmusic,tracks):
 
 
 def create_ytm_playlist(playlist_link, headers):
+    auth_path = None
     try:
+        # ytmusicapi.setup writes a JSON file and YTMusic reads it during
+        # construction. A fixed filename makes concurrent requests share
+        # credentials, so allocate an exclusive per-request file instead.
+        fd, auth_path = tempfile.mkstemp(
+            prefix="spottransfer-auth-", suffix=".json"
+        )
+        os.close(fd)
+
         # Parse and format headers
         formatted_headers = parse_headers(headers)
-        ytmusicapi.setup(filepath="header_auth.json", headers_raw=formatted_headers)
+        ytmusicapi.setup(filepath=auth_path, headers_raw=formatted_headers)
+        ytmusic = YTMusic(auth_path)
     except Exception as e:
-        raise Exception(f"Failed to setup YouTube Music API: {str(e)}")
-    
-    ytmusic = YTMusic("header_auth.json")
+        raise Exception("Failed to setup YouTube Music API") from e
+    finally:
+        if auth_path:
+            try:
+                os.unlink(auth_path)
+            except FileNotFoundError:
+                pass
+
     tracks = get_all_tracks(playlist_link, "IN")
     name = get_playlist_name(playlist_link)
     video_ids, missed_tracks = get_video_ids(ytmusic, tracks)
