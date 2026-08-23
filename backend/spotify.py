@@ -5,6 +5,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def get_response_data(response, operation):
+    """Return Spotify JSON or raise an error with the API's useful message."""
+    try:
+        data = response.json()
+    except ValueError:
+        data = {}
+
+    if not response.ok:
+        error = data.get("error", {}) if isinstance(data, dict) else {}
+        message = error.get("message") or response.reason or "Unknown Spotify API error"
+        raise Exception(f"Spotify API failed while {operation} ({response.status_code}): {message}")
+
+    return data
+
 
 
 def get_spotify_access_token(client_id, client_secret):
@@ -19,10 +33,8 @@ def get_spotify_access_token(client_id, client_secret):
     }
     
     response = requests.post(url, headers=headers, data=data)
-    if response.status_code != 200:
-        raise Exception(f"Failed to get access token: {response.json()}")
-    
-    return response.json()["access_token"]
+    data = get_response_data(response, "getting an access token")
+    return data["access_token"]
 
 
 def extract_playlist_id(playlist_url):
@@ -44,7 +56,7 @@ def get_all_tracks(link, market):
     
     while url:
         response = requests.get(url, headers=headers)
-        data = response.json()
+        data = get_response_data(response, "retrieving playlist tracks")
         for item in data["items"]:
             track = item["track"]
             if not track or track.get("is_local") or track.get("restrictions"):
@@ -71,7 +83,7 @@ def get_playlist_name(link):
     }
     
     response = requests.get(url, headers=headers)
-    data = response.json()
+    data = get_response_data(response, "retrieving the playlist name")
     return data["name"]
     
     

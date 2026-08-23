@@ -28,6 +28,7 @@ def create_playlist():
                 "missed_tracks": missed_tracks
         }, 200
     except Exception as e:
+        app.logger.exception("Failed to clone playlist")
         return {"message": str(e)}, 500
     
 @app.route('/', methods=['GET'])
