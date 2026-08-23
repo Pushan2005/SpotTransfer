@@ -41,11 +41,24 @@ cd SpotTransfer
     ```
     **Important note** - Spotify has made changes to their API where users will now require a Spotify Premium Subscription in order to use the API. Please make sure to get these credentials from an account that has a premium subscription (the Spotify account you get the credentials from doesn't have to be the same account where the playlists are, a friend's account with a subscription also works)  
 
-4. Start the Flask server:
+4. For local development, start the Flask server:
     ```bash
     python3 main.py
     ```
     Sometimes, using `python3` might not work depending on how python is configured on your system. Running `py main.py` usually works in such situations.
+
+    Do not expose this development server directly to the internet. For a
+    public self-hosted deployment, run Gunicorn and put Nginx in front of it:
+
+    ```bash
+    gunicorn -c config/gunicorn.conf.py main:app
+    ```
+
+    Use [`deploy/nginx.conf.example`](deploy/nginx.conf.example) as the edge
+    configuration. It applies request-read timeouts, body-size limits, and
+    request/concurrent-connection limits. The Gunicorn configuration binds to
+    localhost:8081 so public clients cannot bypass those protections; Nginx
+    listens on port 8080.
 
 ### Frontend Setup
 
