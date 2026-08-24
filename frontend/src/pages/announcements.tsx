@@ -125,6 +125,14 @@ Open to suggestions. If you have any, please reach out to me on GitHub.
 `,
         type: "error",
     },
+    {
+        id: "11",
+        date: "August 24, 2026",
+        title: "SpotTransfer is undergoing maintenance",
+        content:
+            "I am currently working on a fix to let people use the app uninterrupted again, please check back in a day or two.",
+        type: "info",
+    },
 ];
 
 function getTypeStyles(type: Announcement["type"]) {
