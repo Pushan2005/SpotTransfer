@@ -161,7 +161,13 @@ export default function Announcements() {
                             .reverse()
                             .map((announcement, index) => (
                                 <div key={announcement.id}>
-                                    <article className="py-6">
+                                    <article
+                                        className={`py-6 ${
+                                            index === 0
+                                                ? "border-l-2 border-primary/60 bg-primary/[0.045] pl-4 pr-3 sm:pl-5 sm:pr-4"
+                                                : ""
+                                        }`}
+                                    >
                                         <div className="flex items-start gap-4">
                                             <span
                                                 className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-medium shrink-0 mt-0.5 ${getTypeStyles(
@@ -179,6 +185,11 @@ export default function Announcements() {
                                                         : "i"}
                                             </span>
                                             <div className="flex-1 min-w-0">
+                                                {index === 0 && (
+                                                    <div className="mb-1 text-xs font-medium text-primary">
+                                                        Latest
+                                                    </div>
+                                                )}
                                                 <div className="flex items-baseline gap-3 flex-wrap">
                                                     <h2 className="font-semibold text-foreground">
                                                         {announcement.title}
