@@ -1,78 +1,48 @@
 # SpotTransfer
 
-## Overview
+SpotTransfer is a free, open-source tool for moving Spotify playlists to YouTube Music.
 
-SpotTransfer lets you instantly migrate any Spotify playlist to YouTube Music—no manual copy-pasting needed.
+### Prerequisites
 
-[![](https://api.star-history.com/svg?repos=Pushan2005/SpotTransfer&type=date&legend=top-left)](https://www.star-history.com/#Pushan2005/SpotTransfer&type=date&legend=top-left)
+- Python 3.8+
 
-<!-- start history service seems to be down -->
-
-## Quick Start
-
-Prerequisites:
-
--   Python 3.8+
--   Node.js 14+ (or pnpm)
--   Spotify Developer account (client ID & secret)
-
-Clone and install both backend and frontend:
+Clone the repository and install the backend dependencies:
 
 ```bash
 git clone https://github.com/Pushan2005/SpotTransfer.git
-cd SpotTransfer
+cd SpotTransfer/backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### Backend Setup
+On Windows, activate the virtual environment with `venv\Scripts\activate` instead.
 
-1. Navigate to the `backend` directory:
-    ```bash
-    cd backend/
-    ```
-2. Install the Python dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-3. Rename `.env.example` to `.env` and add your Spotify credentials (get these from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)):  
+### Get your YouTube Music request headers
 
-    ```env
-    SPOTIPY_CLIENT_ID=<your_spotify_client_id>
-    SPOTIPY_CLIENT_SECRET=<your_spotify_client_secret>
-    ```
-    **Important note** - Spotify has made changes to their API where users will now require a Spotify Premium Subscription in order to use the API. Please make sure to get these credentials from an account that has a premium subscription (the Spotify account you get the credentials from doesn't have to be the same account where the playlists are, a friend's account with a subscription also works)  
+1. Open [music.youtube.com](https://music.youtube.com) and sign in to your Google account.
+2. Open your browser's developer tools and go to the **Network** tab.
+3. Filter the requests for `/browse` and find a successful `POST` request with a `200` status.
+    - In Firefox, right-click the request and choose **Copy > Copy Request Headers**.
+    - In Chrome or Edge, open the request, go to **Headers**, and copy everything from `accept: */*` to the end of **Request Headers**.
+4. Paste the copied request headers into `backend/browser.json` and save the file. Paste them into the file instead of the web-hosted form.
 
-4. For local development, start the Flask server:
-    ```bash
-    python3 main.py
-    ```
-    Sometimes, using `python3` might not work depending on how python is configured on your system. Running `py main.py` usually works in such situations.
+### Run a transfer
 
-    Do not expose this development server directly to the internet. For a
-    public self-hosted deployment, run Gunicorn and put Nginx in front of it:
+1. Open `backend/setup.py` and paste your Spotify playlist link into the variable:
+
+    ```python
+    spotify_playlist_link = "https://open.spotify.com/playlist/your-playlist-id"
+    ```
+
+2. From the `backend` directory, run:
 
     ```bash
-    gunicorn -c config/gunicorn.conf.py main:app
+    python3 selfhost.py
     ```
 
-    Use [`deploy/nginx.conf.example`](deploy/nginx.conf.example) as the edge
-    configuration. It applies request-read timeouts, body-size limits, and
-    request/concurrent-connection limits. The Gunicorn configuration binds to
-    localhost:8081 so public clients cannot bypass those protections; Nginx
-    listens on port 8080.
+For a new playlist, change `spotify_playlist_link` in `setup.py` and run `python3 selfhost.py` again. Repeat this for each playlist you want to transfer.
 
-### Frontend Setup
+### Authentication issues
 
-1. In the `frontend` directory, rename `.env.example` to `.env` and make any changes to the variable if required:
-    ```env
-    VITE_API_URL=http://localhost:8080
-    ```
-2. Install the frontend dependencies:
-    ```bash
-    npm install
-    ```
-3. Run the dev server for the frontend:
-    ```bash
-    npm run dev
-    ```
-    If you wish, you can build the app and serve it as well but the dev server works just fine for now.
-4. Open your browser and go to `http://localhost:5173`.
+If you get an authentication error, delete the contents of `browser.json`, get a fresh set of request headers from YouTube Music, paste them into the file, save it, and run `python3 selfhost.py` again. This usually happens when the browser headers expire.

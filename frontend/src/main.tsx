@@ -8,6 +8,7 @@ import "./index.css";
 import App from "./pages/App.tsx";
 import CreatePlaylist from "./pages/create-playlist.tsx";
 import Announcements from "./pages/announcements.tsx";
+import Selfhost from "./pages/selfhost.tsx";
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
@@ -24,6 +25,7 @@ createRoot(document.getElementById("root")!).render(
                             path="/announcements"
                             element={<Announcements />}
                         />
+                        <Route path="/selfhost" element={<Selfhost />} />
                     </Routes>
                 </BrowserRouter>
             </ThemeProvider>
