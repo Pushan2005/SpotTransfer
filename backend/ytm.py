@@ -16,13 +16,23 @@ def parse_headers(headers_text):
         raise Exception("Headers cannot be empty")
     
     lines = [line.strip() for line in headers_text.strip().split('\n') if line.strip()]
+
+    # Browsers can copy a complete HTTP request, whose first line is e.g.
+    # "POST /youtubei/v1/browse HTTP/2" rather than an HTTP header.
+    if lines and " HTTP/" in lines[0] and lines[0].split(" ", 1)[0] in {
+        "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"
+    }:
+        lines = lines[1:]
+
+    if not lines:
+        raise Exception("Headers cannot be empty")
     
     # Check if headers are already in correct format
     first_line = lines[0] if lines else ""
     colon_pos = first_line.find(': ')
     
     if colon_pos > 0 and colon_pos < 50:
-        return headers_text
+        return '\n'.join(lines)
     
     # Filter out the "Decoded:" section - skip lines that are part of decoded content
     cleaned_lines = []
