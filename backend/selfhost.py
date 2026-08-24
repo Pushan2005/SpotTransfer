@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import sys
 import time
 from collections.abc import Mapping
@@ -32,6 +33,7 @@ BASE_DIR = Path(__file__).resolve().parent
 BROWSER_AUTH_PATH = BASE_DIR / "browser.json"
 _PLAYLIST_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{22}$")
 _PLACEHOLDER_SPOTIFY_LINK = "Replace this with the Spotify playlist link"
+_PROGRESS_BAR_WIDTH = 24
 
 
 def extract_spotify_playlist_id(playlist_link: str) -> str:
@@ -86,12 +88,64 @@ def _validate_setup() -> str:
     return extract_spotify_playlist_id(spotify_playlist_link)
 
 
+def _write_progress(
+    prefix: str,
+    current: int,
+    total: int,
+    detail: str,
+    previous_status_length: int,
+    terminal_width: int,
+) -> int:
+    """Rewrite one width-safe progress line and return its rendered length."""
+
+    safe_total = max(1, total)
+    completed_width = min(
+        _PROGRESS_BAR_WIDTH,
+        int(_PROGRESS_BAR_WIDTH * current / safe_total),
+    )
+    progress_bar = "=" * completed_width
+    progress_bar += "-" * (_PROGRESS_BAR_WIDTH - completed_width)
+
+    status_prefix = f"{prefix} [{progress_bar}] {current}/{total}: "
+    available_detail_width = max(1, terminal_width - len(status_prefix) - 1)
+    if len(detail) > available_detail_width:
+        detail = detail[: max(1, available_detail_width - 3)] + "..."
+
+    status = status_prefix + detail
+    padding = max(0, previous_status_length - len(status))
+    sys.stdout.write(f"\r\033[2K{status}{' ' * padding}")
+    sys.stdout.flush()
+    return max(previous_status_length, len(status))
+
+
 def get_spotify_playlist_name(playlist_link: str) -> str:
     """Fetch the playlist name from a Spotify playlist link with SpotAPI."""
 
     playlist_id = extract_spotify_playlist_id(playlist_link)
-    playlist = PublicPlaylist(playlist_id)
-    response = playlist.get_playlist_info(limit=1)
+    terminal_width = shutil.get_terminal_size(fallback=(120, 24)).columns
+    previous_status_length = _write_progress(
+        "Fetching Spotify",
+        0,
+        1,
+        "playlist metadata",
+        0,
+        terminal_width,
+    )
+
+    try:
+        playlist = PublicPlaylist(playlist_id)
+        response = playlist.get_playlist_info(limit=1)
+        previous_status_length = _write_progress(
+            "Fetching Spotify",
+            1,
+            1,
+            "playlist metadata",
+            previous_status_length,
+            terminal_width,
+        )
+    finally:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
     response_data = response.get("data")
     playlist_data = (
@@ -257,29 +311,61 @@ def _artist_names(track: Mapping[str, object]) -> list[str]:
 def get_spotify_tracks(playlist_id: str) -> tuple[list[dict[str, object]], int]:
     """Fetch all playlist pages with SpotAPI and normalize playable tracks."""
 
-    playlist = PublicPlaylist(playlist_id)
     tracks: list[dict[str, object]] = []
     skipped_tracks = 0
+    fetched_items = 0
+    total_items = 0
+    terminal_width = shutil.get_terminal_size(fallback=(120, 24)).columns
+    previous_status_length = _write_progress(
+        "Fetching Spotify",
+        0,
+        1,
+        "playlist tracks",
+        0,
+        terminal_width,
+    )
 
-    for page in playlist.paginate_playlist():
-        if not isinstance(page, Mapping) or not isinstance(page.get("items"), list):
-            raise RuntimeError("SpotAPI returned an unexpected playlist response")
+    try:
+        playlist = PublicPlaylist(playlist_id)
+        for page in playlist.paginate_playlist():
+            if not isinstance(page, Mapping) or not isinstance(page.get("items"), list):
+                raise RuntimeError("SpotAPI returned an unexpected playlist response")
 
-        for item in page["items"]:
-            track = _unwrap_spotify_track(item)
-            if track is None:
-                skipped_tracks += 1
-                continue
+            page_items = page["items"]
+            fetched_items += len(page_items)
+            page_total = page.get("totalCount")
+            if isinstance(page_total, int) and page_total >= fetched_items:
+                total_items = page_total
+            elif total_items == 0:
+                total_items = fetched_items
 
-            name = track.get("name")
-            artists = _artist_names(track)
-            if not isinstance(name, str) or not name.strip() or not artists:
-                # Removed, local, or otherwise unavailable Spotify items do not
-                # contain enough metadata to search YouTube Music reliably.
-                skipped_tracks += 1
-                continue
+            previous_status_length = _write_progress(
+                "Fetching Spotify",
+                fetched_items,
+                total_items,
+                "playlist tracks",
+                previous_status_length,
+                terminal_width,
+            )
 
-            tracks.append({"name": name.strip(), "artists": artists})
+            for item in page_items:
+                track = _unwrap_spotify_track(item)
+                if track is None:
+                    skipped_tracks += 1
+                    continue
+
+                name = track.get("name")
+                artists = _artist_names(track)
+                if not isinstance(name, str) or not name.strip() or not artists:
+                    # Removed, local, or otherwise unavailable Spotify items do not
+                    # contain enough metadata to search YouTube Music reliably.
+                    skipped_tracks += 1
+                    continue
+
+                tracks.append({"name": name.strip(), "artists": artists})
+    finally:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
     if not tracks:
         raise RuntimeError("The Spotify playlist contains no playable tracks")
@@ -293,6 +379,8 @@ def get_video_ids(ytmusic: YTMusic, tracks: list[dict[str, object]]) -> tuple[li
     video_ids: list[str] = []
     missed_tracks: list[str] = []
     started_at = time.monotonic()
+    terminal_width = shutil.get_terminal_size(fallback=(120, 24)).columns
+    previous_status_length = 0
 
     print(f"Searching for {len(tracks)} songs on YouTube Music")
     for index, track in enumerate(tracks, start=1):
@@ -301,7 +389,14 @@ def get_video_ids(ytmusic: YTMusic, tracks: list[dict[str, object]]) -> tuple[li
         artist_names = artists if isinstance(artists, list) else []
         search_string = " ".join([name, *[str(artist) for artist in artist_names]])
         label = f"{name} - {', '.join(str(artist) for artist in artist_names)}"
-        print(f"Searching for song {index}/{len(tracks)}: {label}")
+        previous_status_length = _write_progress(
+            "Searching",
+            index,
+            len(tracks),
+            label,
+            previous_status_length,
+            terminal_width,
+        )
 
         try:
             results = ytmusic.search(search_string, filter="songs")
@@ -319,12 +414,13 @@ def get_video_ids(ytmusic: YTMusic, tracks: list[dict[str, object]]) -> tuple[li
             video_id = None
 
         if video_id is None:
-            print(f"Not found on YouTube Music: {label}")
             missed_tracks.append(label)
             continue
 
         video_ids.append(video_id)
 
+    sys.stdout.write("\n")
+    sys.stdout.flush()
     elapsed = time.monotonic() - started_at
     print(
         f"Found {len(video_ids)}/{len(tracks)} songs on YouTube Music in "
