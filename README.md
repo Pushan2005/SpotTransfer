@@ -2,8 +2,9 @@
 
 SpotTransfer is a free, open-source tool for moving Spotify playlists to YouTube Music.
 
-### Prerequisites
+[![](https://star-history.dera.page/svg?repos=Pushan2005/SpotTransfer&type=date&legend=top-left)](https://star-history.dera.page/#Pushan2005/SpotTransfer&type=date&legend=top-left)
 
+### Prerequisites
 - Python 3.8+
 
 Clone the repository and install the backend dependencies:
