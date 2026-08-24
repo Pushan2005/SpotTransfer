@@ -3,6 +3,8 @@ import HowToUse from "@/components/landing/how-to-use.tsx";
 import { Footer } from "@/components/landing/footer.tsx";
 import { Link } from "react-router-dom";
 
+import { Analytics } from "@vercel/analytics/react";
+
 export default function App() {
     return (
         <main className="flex w-screen flex-col items-center">
@@ -27,6 +29,7 @@ export default function App() {
             <Hero />
             <HowToUse />
             <Footer />
+            <Analytics />
         </main>
     );
 }
