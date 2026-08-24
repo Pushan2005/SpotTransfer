@@ -21,13 +21,12 @@ const steps = [
         number: "02",
         title: "Grab your request headers",
         description:
-            "Open DevTools, filter the Network tab for /browse, and copy the request headers from a successful POST request.",
+            "Open DevTools, grab your request headers from the network tab.",
     },
     {
         number: "03",
-        title: "Paste and go",
-        description:
-            "Paste your headers and Spotify playlist URL, hit clone, and your playlist will appear on YouTube Music.",
+        title: "Set up and run",
+        description: "Complete the setup and run the selfhost python file",
     },
 ];
 

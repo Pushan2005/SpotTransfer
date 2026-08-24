@@ -1,13 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import Navbar from "@/nav-bar.tsx";
 import { Link } from "react-router-dom";
-import { usePlaylist } from "@/context/playlist-context";
 import { FaGithub } from "react-icons/fa";
 
 export default function Hero() {
-    const { playlistUrl, setPlaylistUrl } = usePlaylist();
-
     return (
         <main className="flex justify-center items-center">
             <div className="w-full max-w-[960px] px-4">
@@ -31,22 +26,24 @@ export default function Hero() {
                             <span className="text-primary">YouTube Music</span>
                         </h1>
                         <p className="mt-5 text-muted-foreground text-base sm:text-lg leading-relaxed max-w-lg mx-auto">
-                            A free, open-source tool to move your playlists
-                            across platforms in a few steps.
+                            Forver free to use and open-source
                         </p>
 
-                        <div className="mt-10 flex flex-col sm:flex-row items-center gap-3 w-full max-w-xl mx-auto">
-                            <Input
-                                placeholder="open.spotify.com/playlist/..."
-                                value={playlistUrl}
-                                onChange={(e) => setPlaylistUrl(e.target.value)}
-                                className="flex-1 h-11 text-sm"
-                            />
-                            <Link to="/create-playlist" className="shrink-0">
-                                <Button className="h-11 px-6 text-sm font-medium">
-                                    Get Started
-                                </Button>
+                        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+                            <Link
+                                to="/selfhost"
+                                className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                            >
+                                View full guide
                             </Link>
+                            <a
+                                href="https://github.com/Pushan2005/SpotTransfer"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-11 items-center justify-center rounded-md border border-border px-6 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                            >
+                                Browse on GitHub
+                            </a>
                         </div>
                     </div>
                 </div>
