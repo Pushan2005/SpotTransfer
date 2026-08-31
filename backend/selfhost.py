@@ -10,11 +10,20 @@ Before running this file:
 The first run converts the pasted headers in ``browser.json`` into the
 ytmusicapi authentication format. Future runs can reuse that generated JSON
 until the browser session expires.
+
+If the YouTube Music headers expire mid-transfer (common for large
+playlists), the script stops and asks for a fresh set of headers. Paste
+them into ``browser.json``, SAVE the file, and run the script again; the
+partial progress stored in ``transfer_progress.json`` is detected on
+startup and the transfer resumes where it stopped. Setting a different
+playlist link in ``setup.py`` discards the saved progress and starts a
+new transfer instead.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import sys
@@ -31,9 +40,72 @@ from setup import spotify_playlist_link
 
 BASE_DIR = Path(__file__).resolve().parent
 BROWSER_AUTH_PATH = BASE_DIR / "browser.json"
+PROGRESS_PATH = BASE_DIR / "transfer_progress.json"
+_PROGRESS_VERSION = 1
 _PLAYLIST_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{22}$")
-_PLACEHOLDER_SPOTIFY_LINK = "Replace this with the Spotify playlist link"
+_PLACEHOLDER_SPOTIFY_LINK = "https://open.spotify.com/playlist/2nncn5UUUVQdQaRb6lKwB0 "
 _PROGRESS_BAR_WIDTH = 24
+_AUTH_ERROR_MARKERS = ("HTTP 401", "HTTP 403", "UNAUTHENTICATED", "unauthorized")
+
+
+class AuthExpiredError(RuntimeError):
+    """YouTube Music rejected the stored headers as expired or invalid."""
+
+    def __init__(self, message: str, tracks_done: int, tracks_total: int):
+        super().__init__(message)
+        self.tracks_done = tracks_done
+        self.tracks_total = tracks_total
+
+
+def _is_auth_error(error: Exception) -> bool:
+    """Return whether an exception looks like expired YouTube Music auth."""
+
+    message = str(error)
+    return any(marker in message for marker in _AUTH_ERROR_MARKERS)
+
+
+def _load_progress() -> dict[str, object] | None:
+    """Load saved transfer progress, or None when there is nothing to resume."""
+
+    if not PROGRESS_PATH.is_file():
+        return None
+
+    try:
+        progress = json.loads(PROGRESS_PATH.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError):
+        print(f"Could not read {PROGRESS_PATH.name}; starting a new transfer")
+        return None
+
+    if (
+        not isinstance(progress, dict)
+        or progress.get("version") != _PROGRESS_VERSION
+        or not isinstance(progress.get("playlist_id"), str)
+        or not isinstance(progress.get("tracks"), list)
+    ):
+        print(f"Ignoring unrecognized {PROGRESS_PATH.name}; starting a new transfer")
+        return None
+
+    return progress
+
+
+def _save_progress(progress: dict[str, object]) -> None:
+    """Persist transfer progress atomically so an interrupted write is safe."""
+
+    tmp_path = PROGRESS_PATH.with_suffix(".json.tmp")
+    tmp_path.write_text(
+        json.dumps(progress, ensure_ascii=True, indent=2),
+        encoding="utf-8",
+    )
+    os.replace(tmp_path, PROGRESS_PATH)
+
+
+def _clear_progress() -> None:
+    """Remove the progress file once a transfer is complete or discarded."""
+
+    try:
+        PROGRESS_PATH.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def extract_spotify_playlist_id(playlist_link: str) -> str:
@@ -373,17 +445,39 @@ def get_spotify_tracks(playlist_id: str) -> tuple[list[dict[str, object]], int]:
     return tracks, skipped_tracks
 
 
-def get_video_ids(ytmusic: YTMusic, tracks: list[dict[str, object]]) -> tuple[list[str], list[str]]:
-    """Search YouTube Music for each Spotify track, preserving playlist order."""
+def get_video_ids(
+    ytmusic: YTMusic,
+    tracks: list[dict[str, object]],
+    progress: dict[str, object],
+) -> tuple[list[str], list[str]]:
+    """Search YouTube Music for each Spotify track, preserving playlist order.
 
-    video_ids: list[str] = []
-    missed_tracks: list[str] = []
+    Every completed track updates ``progress`` and is written to
+    ``transfer_progress.json`` immediately, so an auth expiry, crash, or
+    Ctrl+C never loses more than the single track being searched. Resuming
+    starts after the last track recorded in ``progress``.
+    """
+
+    video_ids: list[str] = list(progress.get("video_ids") or [])
+    missed_tracks: list[str] = list(progress.get("missed_tracks") or [])
+    start_index = int(progress.get("searched") or 0)
+    if not 0 <= start_index <= len(tracks):
+        start_index = 0
+
     started_at = time.monotonic()
     terminal_width = shutil.get_terminal_size(fallback=(120, 24)).columns
     previous_status_length = 0
 
-    print(f"Searching for {len(tracks)} songs on YouTube Music")
-    for index, track in enumerate(tracks, start=1):
+    if start_index:
+        print(
+            f"Resuming search from track {start_index + 1} of {len(tracks)} "
+            f"({len(video_ids)} already found, {len(missed_tracks)} not on YouTube Music)"
+        )
+    else:
+        print(f"Searching for {len(tracks)} songs on YouTube Music")
+
+    for index in range(start_index, len(tracks)):
+        track = tracks[index]
         name = str(track["name"])
         artists = track.get("artists")
         artist_names = artists if isinstance(artists, list) else []
@@ -391,7 +485,7 @@ def get_video_ids(ytmusic: YTMusic, tracks: list[dict[str, object]]) -> tuple[li
         label = f"{name} - {', '.join(str(artist) for artist in artist_names)}"
         previous_status_length = _write_progress(
             "Searching",
-            index,
+            index + 1,
             len(tracks),
             label,
             previous_status_length,
@@ -410,14 +504,25 @@ def get_video_ids(ytmusic: YTMusic, tracks: list[dict[str, object]]) -> tuple[li
                 ),
                 None,
             )
-        except Exception:
+        except Exception as error:
+            if _is_auth_error(error):
+                raise AuthExpiredError(
+                    "your YouTube Music headers have expired or are no longer valid",
+                    index,
+                    len(tracks),
+                ) from error
             video_id = None
 
         if video_id is None:
             missed_tracks.append(label)
-            continue
+        else:
+            video_ids.append(video_id)
 
-        video_ids.append(video_id)
+        # Persist immediately so restarting never repeats finished searches.
+        progress["video_ids"] = video_ids
+        progress["missed_tracks"] = missed_tracks
+        progress["searched"] = index + 1
+        _save_progress(progress)
 
     sys.stdout.write("\n")
     sys.stdout.flush()
@@ -433,32 +538,144 @@ def get_video_ids(ytmusic: YTMusic, tracks: list[dict[str, object]]) -> tuple[li
     return video_ids, missed_tracks
 
 
+def _create_playlist_with_auth_check(
+    ytmusic: YTMusic,
+    playlist_name: str,
+    video_ids: list[str],
+) -> str:
+    """Create the YouTube Music playlist, raising AuthExpiredError on bad auth."""
+
+    try:
+        created_playlist_id = ytmusic.create_playlist(
+            playlist_name,
+            "",
+            "PRIVATE",
+            video_ids,
+        )
+    except Exception as error:
+        if _is_auth_error(error):
+            raise AuthExpiredError(
+                "your YouTube Music headers have expired or are no longer valid",
+                len(video_ids),
+                len(video_ids),
+            ) from error
+        raise
+    if not isinstance(created_playlist_id, str) or not created_playlist_id:
+        raise RuntimeError("YouTube Music did not return a playlist ID")
+
+    return created_playlist_id
+
+
 def transfer_playlist() -> tuple[str, list[str], str]:
     """Run the complete local Spotify-to-YouTube Music transfer."""
 
     playlist_id = _validate_setup()
-    playlist_name = get_spotify_playlist_name(spotify_playlist_link)
-    ytmusic = load_ytmusic()
-    tracks, skipped_tracks = get_spotify_tracks(playlist_id)
+
+    # A leftover progress file for the same playlist means a previous run was
+    # interrupted (e.g. the YouTube Music headers expired). A file for a
+    # different playlist means the user moved on, so it is discarded.
+    progress = _load_progress()
+    if progress is not None and progress.get("playlist_id") != playlist_id:
+        print(
+            "Found incomplete transfer progress for a different playlist "
+            f"({progress.get('playlist_name') or progress.get('playlist_id')}); "
+            "starting a new transfer for the current playlist"
+        )
+        _clear_progress()
+        progress = None
+
+    resuming = progress is not None
+    if resuming:
+        playlist_name = str(progress["playlist_name"])
+        tracks = list(progress["tracks"])
+        skipped_tracks = int(progress.get("skipped_tracks") or 0)
+        print(
+            f"Resuming incomplete transfer of '{playlist_name}' "
+            f"({progress.get('searched') or 0}/{len(tracks)} tracks already searched)"
+        )
+    else:
+        playlist_name = get_spotify_playlist_name(spotify_playlist_link)
+        tracks, skipped_tracks = get_spotify_tracks(playlist_id)
+        progress = {
+            "version": _PROGRESS_VERSION,
+            "playlist_id": playlist_id,
+            "playlist_link": spotify_playlist_link,
+            "playlist_name": playlist_name,
+            "tracks": tracks,
+            "skipped_tracks": skipped_tracks,
+            "video_ids": [],
+            "missed_tracks": [],
+            "searched": 0,
+            "search_complete": False,
+        }
+        _save_progress(progress)
+
     if skipped_tracks:
         print(f"Skipped {skipped_tracks} Spotify playlist item(s) without usable metadata")
 
-    video_ids, missed_tracks = get_video_ids(ytmusic, tracks)
-    created_playlist_id = ytmusic.create_playlist(
+    # browser.json is re-read and re-parsed on every run, so headers pasted
+    # after an auth expiry are always picked up before resuming.
+    ytmusic = load_ytmusic()
+
+    video_ids, missed_tracks = get_video_ids(ytmusic, tracks, progress)
+    progress["search_complete"] = True
+    _save_progress(progress)
+
+    created_playlist_id = _create_playlist_with_auth_check(
+        ytmusic,
         playlist_name,
-        "",
-        "PRIVATE",
         video_ids,
     )
-    if not isinstance(created_playlist_id, str) or not created_playlist_id:
-        raise RuntimeError("YouTube Music did not return a playlist ID")
 
+    # The transfer succeeded; nothing left to resume.
+    _clear_progress()
     return created_playlist_id, missed_tracks, playlist_name
+
+
+def _print_auth_expired_instructions(error: AuthExpiredError) -> None:
+    """Tell the user how to refresh browser.json and resume the transfer."""
+
+    progress = _load_progress()
+    search_complete = bool(progress and progress.get("search_complete"))
+
+    print(
+        "\nTransfer paused: your YouTube Music request headers have expired "
+        "or are no longer valid.",
+        file=sys.stderr,
+    )
+    if search_complete:
+        print(
+            f"All {error.tracks_done} tracks were already searched, only the "
+            "final playlist needs to be created.",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"Progress was saved at track {error.tracks_done} of "
+            f"{error.tracks_total}; nothing found so far will be lost.",
+            file=sys.stderr,
+        )
+    print(
+        "\nTo continue:\n"
+        "  1. Get a fresh set of request headers from an authenticated\n"
+        "     music.youtube.com /browse request (see the instructions on\n"
+        "     the website or in the README).\n"
+        "  2. Delete the contents of browser.json, paste the new headers\n"
+        "     into it, and SAVE the file (Ctrl+S) before closing the editor.\n"
+        "  3. Run this script again. It will pick up the new headers and\n"
+        "     resume exactly where the transfer stopped.\n"
+        "\nThere is no need to press anything here; just edit browser.json,\n"
+        "save it, and start the script again when ready.",
+        file=sys.stderr,
+    )
 
 
 def main() -> int:
     try:
         created_playlist_id, missed_tracks, playlist_name = transfer_playlist()
+    except AuthExpiredError as error:
+        _print_auth_expired_instructions(error)
+        return 1
     except Exception as error:
         print(f"Transfer failed: {error}", file=sys.stderr)
         return 1

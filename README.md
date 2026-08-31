@@ -46,7 +46,13 @@ For a new playlist, change `spotify_playlist_link` in `setup.py` and run `python
 
 ### Authentication issues
 
-If you get an authentication error, delete the contents of `browser.json`, get a fresh set of request headers from YouTube Music, paste them into the file, save it, and run `python3 selfhost.py` again. This usually happens when the browser headers expire.
+The YouTube Music request headers in `browser.json` expire periodically, which is most noticeable on large playlists. When that happens the script pauses the transfer, saves its progress to `backend/transfer_progress.json`, and tells you what to do:
+
+1. Get a fresh set of request headers from YouTube Music.
+2. Delete the contents of `backend/browser.json`, paste the new headers in, and **save the file**.
+3. Run `python3 selfhost.py` again. The script re-reads `browser.json` on startup and resumes the transfer from where it stopped — already-searched tracks are not repeated.
+
+Starting a transfer for a different playlist (by changing `spotify_playlist_link` in `setup.py`) automatically discards any saved progress for the previous one.
 
 # Acknowledgements
 
