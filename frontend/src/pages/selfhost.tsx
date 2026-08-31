@@ -96,12 +96,14 @@ pip install -r requirements.txt`}</CodeBlock>
                                     Authentication issue?
                                 </h2>
                                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                                    The script pauses the transfer and saves
+                                    its progress when the headers expire.
                                     Delete the contents of{" "}
                                     <InlineCode>browser.json</InlineCode>, get
                                     a fresh set of headers from YouTube Music,
                                     paste them into the file, save it, and run
-                                    the script again. This usually happens when
-                                    the headers expire.
+                                    the script again — it resumes from where
+                                    it stopped instead of starting over.
                                 </p>
                             </CardContent>
                         </Card>
