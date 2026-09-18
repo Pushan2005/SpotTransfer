@@ -1,0 +1,6 @@
+{
+    "cookie": "PASTE_THE_WHOLE_COOKIE_HEADER_HERE",
+    "authorization": "SAPISIDHASH PASTE_THE_WHOLE_AUTHORIZATION_HEADER_HERE",
+    "x-goog-authuser": "0",
+    "user-agent": "Mozilla/5.0"
+}
