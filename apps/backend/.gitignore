@@ -1,5 +1,6 @@
 *.json
 !browser.json
+!package.json
 *.txt
 test.py
 .env

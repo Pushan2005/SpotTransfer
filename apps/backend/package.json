@@ -1,0 +1,9 @@
+{
+    "name": "backend",
+    "version": "0.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "bun scripts/dev.mjs",
+        "transfer": "bun scripts/transfer.mjs"
+    }
+}
