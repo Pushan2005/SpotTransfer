@@ -4,6 +4,7 @@
 test.py
 .env
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.pyo

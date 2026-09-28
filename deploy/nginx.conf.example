@@ -1,6 +1,6 @@
 # Public edge configuration for SpotTransfer.
 #
-# Run Gunicorn with backend/config/gunicorn.conf.py. It binds to 127.0.0.1:8081
+# Run Gunicorn with apps/backend/config/gunicorn.conf.py. It binds to 127.0.0.1:8081
 # so clients cannot bypass these connection, body, and rate limits.
 
 limit_req_zone $binary_remote_addr zone=spottransfer_create_rate:10m rate=1r/s;
