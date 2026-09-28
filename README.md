@@ -45,6 +45,12 @@ bun run dev:backend
 
 Other root scripts: `bun run build`, `bun run lint`, `bun run preview`.
 
+### Desktop client (no Bun needed)
+
+`apps/desktop/main.py` is a tkinter GUI with playlist-link and headers input
+fields. It reuses the backend transfer logic and runs on plain Python — see
+`apps/desktop/README.md`. It is intentionally outside the Bun workspaces.
+
 ### Get your YouTube Music request headers
 
 1. Open [music.youtube.com](https://music.youtube.com) and sign in to your Google account.
