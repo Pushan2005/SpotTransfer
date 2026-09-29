@@ -31,7 +31,7 @@ export default function Hero() {
 
                         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
                             <Link
-                                to="/selfhost"
+                                to="/guide"
                                 className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                             >
                                 View full guide

@@ -1,5 +1,6 @@
 import { Footer } from "@/components/landing/footer";
 import Navbar from "@/nav-bar.tsx";
+import { Link } from "react-router-dom";
 
 interface Announcement {
     id: string;
@@ -210,15 +211,12 @@ export default function Announcements() {
                                                     {announcement.content}
                                                 </div>
                                                 {announcement.id === "7" && (
-                                                    <a
-                                                        href="https://github.com/Pushan2005/SpotTransfer"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                    <Link
+                                                        to="/guide"
                                                         className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-primary hover:underline"
                                                     >
-                                                        View self-hosting guide
-                                                        &rarr;
-                                                    </a>
+                                                        View the guide &rarr;
+                                                    </Link>
                                                 )}
                                             </div>
                                         </div>

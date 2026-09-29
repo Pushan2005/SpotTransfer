@@ -18,14 +18,25 @@ manual `pip` step.
    `apps/desktop/transfer_progress.json` after every track, so **Stop** or
    expired headers never lose completed work — press Start again to resume.
 
+The window uses the Sun Valley theme (dark by default); the **Theme** button
+toggles light/dark.
+
 ## Run it
 
-Dependencies are handled automatically (see step 1). To reuse the backend
-venv instead of the desktop one:
+Dependencies are handled automatically (see step 1). To bypass the
+bootstrap and use the desktop venv directly:
 
 ```bash
-../backend/.venv/Scripts/python main.py   # Windows
-../backend/.venv/bin/python main.py       # macOS/Linux
+.venv/Scripts/python main.py   # Windows
+.venv/bin/python main.py       # macOS/Linux
+```
+
+Prefer the terminal? The classic CLI still works from this folder — edit
+`setup.py`, paste headers into `browser.json`, then run:
+
+```bash
+.venv/Scripts/python selfhost.py   # Windows
+.venv/bin/python selfhost.py       # macOS/Linux
 ```
 
 Headless sanity check (verifies imports, opens no window):

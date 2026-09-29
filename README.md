@@ -4,11 +4,13 @@ SpotTransfer is a free, open-source tool for moving Spotify playlists to YouTube
 
 [![](https://star-history.dera.page/svg?repos=Pushan2005/SpotTransfer&type=date&legend=top-left)](https://star-history.dera.page/#Pushan2005/SpotTransfer&type=date&legend=top-left)
 
-This repo is a Bun monorepo (`apps/web` + `apps/backend`). The Python backend is unchanged — Bun workspaces only orchestrate installs and dev processes via `scripts/`.
+This repo holds the web frontend (`apps/web`, Bun) and the self-hosted
+desktop client (`apps/desktop`, plain Python, intentionally outside the Bun
+workspaces).
 
 ### Prerequisites
-- Bun 1.2+
-- Python 3.8+ (a `.venv` is created automatically on first run)
+- Bun 1.2+ (web frontend only)
+- Python 3.8+ for the desktop client (a `.venv` is created automatically on first run)
 
 ```bash
 git clone https://github.com/Pushan2005/SpotTransfer.git
@@ -16,31 +18,24 @@ cd SpotTransfer
 bun install
 ```
 
-Copy the env examples:
+Copy the web env example:
 
 ```bash
 cp apps/web/.env.example apps/web/.env
-cp apps/backend/.env.example apps/backend/.env
 ```
 
-`apps/web/.env` holds `VITE_API_URL` (default `http://localhost:8080`, the Flask port in `apps/backend/main.py`).
+`apps/web/.env` holds `VITE_API_URL` (default `http://localhost:8080`).
 
-### Run the web app + API together
+### Run the web app
 
 ```bash
 bun run dev
 ```
 
-This starts Vite (`http://localhost:5173`) and the Flask API (`http://localhost:8080`) with prefixed logs. To also open the frontend in your browser once Vite is ready:
+This starts Vite (`http://localhost:5173`). To also open it in your browser:
 
 ```bash
 bun run dev:all
-```
-
-Run them separately with:
-```bash
-bun run dev:web
-bun run dev:backend
 ```
 
 Other root scripts: `bun run build`, `bun run lint`, `bun run preview`.
@@ -48,8 +43,8 @@ Other root scripts: `bun run build`, `bun run lint`, `bun run preview`.
 ### Desktop client (no Bun needed)
 
 `apps/desktop/main.py` is a tkinter GUI with playlist-link and headers input
-fields. It reuses the backend transfer logic and runs on plain Python — see
-`apps/desktop/README.md`. It is intentionally outside the Bun workspaces.
+fields. It runs on plain Python and sets up its own venv — see
+`apps/desktop/README.md`.
 
 ### Get your YouTube Music request headers
 
@@ -58,31 +53,34 @@ fields. It reuses the backend transfer logic and runs on plain Python — see
 3. Filter the requests for `/browse` and find a successful `POST` request with a `200` status.
     - In Firefox, right-click the request and choose **Copy > Copy Request Headers**.
     - In Chrome or Edge, open the request, go to **Headers**, and copy everything from `accept: */*` to the end of **Request Headers**.
-4. Paste the copied request headers into `apps/backend/browser.json` and save the file. Paste them into the file instead of the web-hosted form.
+4. Paste the copied request headers into the desktop app's headers box (or into `apps/desktop/browser.json` for the CLI flow) and save the file. Paste them into the file instead of the web-hosted form.
 
-### Run a transfer (self-hosted CLI)
+### Run a transfer (self-hosted)
 
-1. Open `apps/backend/setup.py` and paste your Spotify playlist link into the variable:
+Easiest: the desktop GUI (`apps/desktop/main.py`) takes the playlist link
+and headers as input fields. Prefer the terminal? Edit
+`apps/desktop/setup.py`:
 
     ```python
     spotify_playlist_link = "https://open.spotify.com/playlist/your-playlist-id"
     ```
 
-2. From the repo root, run:
+then, from `apps/desktop`, run the venv interpreter on `selfhost.py`:
 
     ```bash
-    bun run transfer
+    .venv/Scripts/python selfhost.py   # Windows
+    .venv/bin/python selfhost.py       # macOS/Linux
     ```
 
-For a new playlist, change `spotify_playlist_link` in `setup.py` and run `bun run transfer` again. Repeat this for each playlist you want to transfer.
+For a new playlist, change `spotify_playlist_link` in `setup.py` and run `selfhost.py` again. Repeat this for each playlist you want to transfer.
 
 ### Authentication issues
 
-The YouTube Music request headers in `browser.json` expire periodically, which is most noticeable on large playlists. When that happens the script pauses the transfer, saves its progress to `apps/backend/transfer_progress.json`, and tells you what to do:
+The YouTube Music request headers expire periodically, which is most noticeable on large playlists. When that happens the script pauses the transfer, saves its progress to `apps/desktop/transfer_progress.json`, and tells you what to do:
 
 1. Get a fresh set of request headers from YouTube Music.
-2. Delete the contents of `apps/backend/browser.json`, paste the new headers in, and **save the file**.
-3. Run `bun run transfer` again. The script re-reads `browser.json` on startup and resumes the transfer from where it stopped — already-searched tracks are not repeated.
+2. Delete the contents of `apps/desktop/browser.json` (CLI flow), paste the new headers in, and **save the file**. In the GUI, just paste the fresh headers into the headers box.
+3. Run the transfer again. The script re-reads the headers on startup and resumes from where it stopped — already-searched tracks are not repeated.
 
 Starting a transfer for a different playlist (by changing `spotify_playlist_link` in `setup.py`) automatically discards any saved progress for the previous one.
 

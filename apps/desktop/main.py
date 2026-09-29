@@ -1,7 +1,7 @@
 """SpotTransfer desktop client (tkinter UI, no Bun/Node required).
 
-Run with plain Python — the backend transfer logic in apps/backend is reused,
-so this file only contains UI + worker-thread orchestration:
+Run with plain Python — the transfer logic in selfhost.py (same folder) is
+reused, so this file only contains UI + worker-thread orchestration:
 
     cd apps/desktop
     python main.py
@@ -25,14 +25,9 @@ import threading
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-BACKEND_DIR = BASE_DIR.parent / "backend"
 DESKTOP_VENV_DIR = BASE_DIR / ".venv"
 PROGRESS_PATH = BASE_DIR / "transfer_progress.json"
 _PROGRESS_VERSION = 1
-
-# apps/backend must be importable so the GUI can reuse selfhost.py helpers.
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
 
 try:
     import tkinter as tk
@@ -81,7 +76,7 @@ def ensure_deps() -> None:
         raise SystemExit(
             "Backend dependencies are still missing inside "
             "apps/desktop/.venv. Delete that folder and try again, or "
-            "install manually: pip install -r ../backend/requirements.txt"
+            "install manually: pip install -r requirements.txt"
         )
 
     import subprocess
@@ -96,10 +91,10 @@ def ensure_deps() -> None:
                if os.name != "nt" else "")
         )
 
-    print("Installing backend dependencies into apps/desktop/.venv …")
+    print("Installing desktop dependencies into apps/desktop/.venv …")
     result = subprocess.run(
         [str(venv_python), "-m", "pip", "install", "-r",
-         str(BACKEND_DIR / "requirements.txt")])
+         str(BASE_DIR / "requirements.txt")])
     if result.returncode != 0:
         raise SystemExit("pip install failed — see the output above.")
 
@@ -109,7 +104,7 @@ def ensure_deps() -> None:
 
 
 def load_backend():
-    """Import apps/backend/selfhost.py, with a friendly error if deps miss."""
+    """Import selfhost.py (same folder), with a friendly error if deps miss."""
 
     try:
         import selfhost  # noqa: F401  (imported for its helpers)
@@ -119,11 +114,11 @@ def load_backend():
         raise RuntimeError(
             "Could not import the transfer backend.\n\n"
             f"Details: {error}\n\n"
-            "Install the backend dependencies first:\n"
-            "  pip install -r ../backend/requirements.txt\n"
-            "or run with the backend venv interpreter:\n"
-            "  ../backend/.venv/Scripts/python main.py   (Windows)\n"
-            "  ../backend/.venv/bin/python main.py       (macOS/Linux)"
+            "Install the desktop dependencies first:\n"
+            "  pip install -r requirements.txt  (from apps/desktop)\n"
+            "or run with the desktop venv interpreter:\n"
+            "  .venv/Scripts/python main.py   (Windows)\n"
+            "  .venv/bin/python main.py       (macOS/Linux)"
         ) from error
 
 
@@ -155,6 +150,33 @@ def clear_progress() -> None:
         PROGRESS_PATH.unlink()
     except FileNotFoundError:
         pass
+
+
+def sync_text_colors(root: tk.Tk, dark: bool, *widgets: tk.Text) -> None:
+    """Recolor plain tk.Text widgets to match the active ttk theme.
+
+    sv-ttk only themes ttk widgets, so the Text boxes (and the root
+    background) are synced from the live style instead of hardcoded
+    palette values.
+    """
+
+    style = ttk.Style(root)
+    if dark:
+        fallback_bg, fallback_fg = "#1c1c1c", "#ffffff"
+    else:
+        fallback_bg, fallback_fg = "#ffffff", "#000000"
+    bg = style.lookup("TEntry", "fieldbackground") or fallback_bg
+    fg = style.lookup("TLabel", "foreground") or fallback_fg
+    select_bg = style.lookup("TEntry", "selectbackground") or (
+        "#264f78" if dark else "#0078d4")
+    select_fg = style.lookup("TEntry", "selectforeground") or "#ffffff"
+    frame_bg = style.lookup("TFrame", "background")
+    if frame_bg:
+        root.configure(background=frame_bg)
+    for widget in widgets:
+        widget.configure(background=bg, foreground=fg, insertbackground=fg,
+                         selectbackground=select_bg,
+                         selectforeground=select_fg)
 
 
 AUTH_HELP = (
@@ -371,6 +393,10 @@ class App:
         self.stop_btn = ttk.Button(buttons, text="Stop",
                                    command=self.stop, state="disabled")
         self.stop_btn.pack(side="left", padx=(8, 0))
+        self.theme_btn = ttk.Button(buttons, text="Theme: Light",
+                                    command=self.toggle_theme,
+                                    state="disabled")
+        self.theme_btn.pack(side="left", padx=(8, 0))
 
         self.status = ttk.Label(frame, text="Ready.")
         self.status.grid(row=6, column=0, sticky="w")
@@ -393,7 +419,33 @@ class App:
         frame.rowconfigure(4, weight=1)
         frame.rowconfigure(9, weight=2)
 
+        self.dark_mode = False
+        self.apply_theme()
+
         self.root.after(100, self.pump)
+
+    def apply_theme(self) -> None:
+        try:
+            import sv_ttk
+        except ImportError:
+            self.append_log("sv-ttk not installed — using default theme.")
+            return
+        sv_ttk.use_dark_theme()
+        self.dark_mode = True
+        self.theme_btn.configure(state="normal", text="Theme: Light")
+        sync_text_colors(self.root, True, self.headers, self.log)
+
+    def toggle_theme(self) -> None:
+        import sv_ttk
+        self.dark_mode = not self.dark_mode
+        if self.dark_mode:
+            sv_ttk.use_dark_theme()
+        else:
+            sv_ttk.use_light_theme()
+        self.theme_btn.configure(
+            text="Theme: Light" if self.dark_mode else "Theme: Dark")
+        sync_text_colors(self.root, self.dark_mode,
+                         self.headers, self.log)
 
     def append_log(self, message: str) -> None:
         self.log.configure(state="normal")
@@ -494,14 +546,14 @@ def self_check() -> int:
     for helper in ("extract_spotify_playlist_id", "get_spotify_playlist_name",
                    "get_spotify_tracks", "parse_browser_headers"):
         assert callable(getattr(backend, helper, None)), helper
-    print(f"backend: {BACKEND_DIR} (selfhost helpers ok)")
+    print(f"transfer logic: {BASE_DIR} (selfhost helpers ok)")
     try:
         import ytmusicapi  # noqa: F401
         import spotapi  # noqa: F401
         print("deps: ytmusicapi + spotapi installed")
     except ImportError as error:
         print(f"deps: MISSING ({error})\n"
-              "  pip install -r ../backend/requirements.txt")
+              "  pip install -r requirements.txt")
         return 1
     print("check: OK — run without --check to open the app")
     return 0

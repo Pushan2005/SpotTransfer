@@ -25,8 +25,9 @@ const steps = [
     },
     {
         number: "03",
-        title: "Set up and run",
-        description: "Complete the setup and run the selfhost python file",
+        title: "Run the transfer",
+        description:
+            "Paste your playlist link and headers into the desktop app and press Start.",
     },
 ];
 

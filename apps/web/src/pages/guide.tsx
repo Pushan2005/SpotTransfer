@@ -8,10 +8,10 @@ const headerSteps = [
     "Open music.youtube.com and sign in to your Google account.",
     "Open your browser's developer tools, go to the Network tab, filter for /browse, and find a successful POST request with a 200 status.",
     "In Firefox, right-click the request and choose Copy > Copy Request Headers. In Chrome or Edge, open the request, select Headers, and copy everything from accept: */* to the end of Request Headers.",
-    "Paste the copied request headers into backend/browser.json and save the file. Paste them into the file instead of the web-hosted form.",
+    "Paste the copied request headers into the desktop app's headers box. If you use the terminal script instead, paste them into apps/desktop/browser.json and save the file.",
 ];
 
-export default function Selfhost() {
+export default function Guide() {
     return (
         <main className="flex w-screen flex-col items-center">
             <div className="w-full max-w-[960px] px-4">
@@ -20,33 +20,34 @@ export default function Selfhost() {
                 <div className="mt-20 md:mt-28 lg:mt-32">
                     <div className="max-w-2xl">
                         <p className="text-sm font-medium uppercase tracking-wide text-primary">
-                            Self-hosting guide
+                            Guide
                         </p>
                         <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
                             Run SpotTransfer on your computer
                         </h1>
                         <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
-                            The transfer needs to be self-hosted. Follow these
-                            steps to authenticate with YouTube Music, choose a
-                            Spotify playlist, and run the local script.
+                            SpotTransfer is self-hosted: the transfer runs on
+                            your machine, not on a server. Use the desktop app
+                            below, or the terminal script if you prefer it.
                         </p>
                     </div>
 
                     <div className="mt-12 space-y-8">
-                        <GuideSection number="01" title="Install the backend">
+                        <GuideSection number="01" title="Get the desktop app">
                             <p>
-                                You need Python 3.8 or newer. Clone the
-                                repository, enter the backend directory, and
-                                install its dependencies:
+                                You need Python 3.8 or newer. On Debian/Ubuntu
+                                you may also need{" "}
+                                <InlineCode>sudo apt install python3-tk</InlineCode>.
+                                Clone the repository and start the app:
                             </p>
                             <CodeBlock>{`git clone https://github.com/Pushan2005/SpotTransfer.git
-cd SpotTransfer/backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt`}</CodeBlock>
+cd SpotTransfer/apps/desktop
+python main.py`}</CodeBlock>
                             <p>
-                                On Windows, activate the environment with{" "}
-                                <InlineCode>venv\Scripts\activate</InlineCode>.
+                                The first run creates{" "}
+                                <InlineCode>apps/desktop/.venv</InlineCode>{" "}
+                                automatically, installs the dependencies into
+                                it, and restarts itself — no manual pip step.
                             </p>
                         </GuideSection>
 
@@ -67,26 +68,42 @@ pip install -r requirements.txt`}</CodeBlock>
                             </div>
                         </GuideSection>
 
-                        <GuideSection number="03" title="Set the playlist">
+                        <GuideSection number="03" title="Run the transfer">
                             <p>
-                                Open <InlineCode>backend/setup.py</InlineCode>{" "}
+                                Paste your public Spotify playlist link and the
+                                request headers into the app's input fields and
+                                press <strong>Start Transfer</strong>. Progress
+                                is saved to{" "}
+                                <InlineCode>
+                                    apps/desktop/transfer_progress.json
+                                </InlineCode>{" "}
+                                after every track, so stopping early never loses
+                                completed work — press Start again to resume.
+                            </p>
+                        </GuideSection>
+
+                        <GuideSection number="04" title="Prefer the terminal?">
+                            <p>
+                                Open{" "}
+                                <InlineCode>apps/desktop/setup.py</InlineCode>{" "}
                                 and paste your Spotify playlist link into the
                                 variable:
                             </p>
                             <CodeBlock>{`spotify_playlist_link = "https://open.spotify.com/playlist/your-playlist-id"`}</CodeBlock>
-                        </GuideSection>
-
-                        <GuideSection number="04" title="Run the transfer">
                             <p>
-                                From the <InlineCode>backend</InlineCode>{" "}
-                                directory, run:
+                                Paste your headers into{" "}
+                                <InlineCode>apps/desktop/browser.json</InlineCode>,
+                                then run the script with the desktop venv
+                                interpreter from the{" "}
+                                <InlineCode>apps/desktop</InlineCode> directory:
                             </p>
-                            <CodeBlock>{`python3 selfhost.py`}</CodeBlock>
+                            <CodeBlock>{`.venv/Scripts/python selfhost.py   # Windows
+.venv/bin/python selfhost.py       # macOS/Linux`}</CodeBlock>
                             <p>
                                 For a new playlist, change the playlist link
                                 in <InlineCode>setup.py</InlineCode> and run{" "}
-                                <InlineCode>python3 selfhost.py</InlineCode>{" "}
-                                again. Repeat this for each playlist.
+                                <InlineCode>selfhost.py</InlineCode> again.
+                                Repeat this for each playlist.
                             </p>
                         </GuideSection>
 
@@ -97,13 +114,13 @@ pip install -r requirements.txt`}</CodeBlock>
                                 </h2>
                                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                                     The script pauses the transfer and saves
-                                    its progress when the headers expire.
-                                    Delete the contents of{" "}
-                                    <InlineCode>browser.json</InlineCode>, get
-                                    a fresh set of headers from YouTube Music,
-                                    paste them into the file, save it, and run
-                                    the script again — it resumes from where
-                                    it stopped instead of starting over.
+                                    its progress when the headers expire. Get a
+                                    fresh set of headers from YouTube Music,
+                                    paste them into the app (or into{" "}
+                                    <InlineCode>browser.json</InlineCode> for
+                                    the terminal script), and run the transfer
+                                    again — it resumes from where it stopped
+                                    instead of starting over.
                                 </p>
                             </CardContent>
                         </Card>

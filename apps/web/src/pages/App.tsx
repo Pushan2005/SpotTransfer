@@ -12,7 +12,7 @@ export default function App() {
                 <p className="text-center text-xs sm:text-sm text-foreground/80">
                     SpotTransfer can now be self-hosted.{" "}
                     <Link
-                        to="/selfhost"
+                        to="/guide"
                         className="font-medium text-primary hover:underline"
                     >
                         View the setup guide

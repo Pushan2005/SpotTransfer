@@ -12,7 +12,7 @@ export default function Navbar() {
             </Link>
             <div className="flex items-center gap-6">
                 <Link
-                    to="/selfhost"
+                    to="/guide"
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                     Guide

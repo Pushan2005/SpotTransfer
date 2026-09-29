@@ -5,7 +5,7 @@ Before running this file:
 1. Copy the request headers from an authenticated ``music.youtube.com``
    ``/browse`` request into ``browser.json``.
 2. Set ``spotify_playlist_link`` in ``setup.py``.
-3. Run this file with the Python interpreter from ``backend/venv``.
+3. Run this file with the Python interpreter from ``.venv``.
 
 The first run converts the pasted headers in ``browser.json`` into the
 ytmusicapi authentication format. Future runs can reuse that generated JSON

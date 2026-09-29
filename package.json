@@ -3,15 +3,11 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/web",
-    "apps/backend"
+    "apps/web"
   ],
   "scripts": {
-    "dev": "bun scripts/dev.mjs",
-    "dev:all": "bun scripts/dev.mjs --open",
-    "dev:web": "cd apps/web && bun run dev",
-    "dev:backend": "cd apps/backend && bun run dev",
-    "transfer": "cd apps/backend && bun run transfer",
+    "dev": "cd apps/web && bun run dev",
+    "dev:all": "cd apps/web && bun run dev:open",
     "build": "cd apps/web && bun run build",
     "lint": "cd apps/web && bun run lint",
     "preview": "cd apps/web && bun run preview"
