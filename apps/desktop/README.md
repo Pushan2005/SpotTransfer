@@ -4,9 +4,12 @@
 
 ```bash
    cd apps/desktop
-   pip install -r ../backend/requirements.txt
    python main.py
 ```
+
+On first run this creates `apps/desktop/.venv` automatically, installs the
+backend dependencies into it, and restarts itself inside that venv — no
+manual `pip` step.
 
 2. Paste a public Spotify playlist link.
 3. Paste raw request headers from an authenticated `music.youtube.com`
@@ -17,8 +20,8 @@
 
 ## Run it
 
-The backend libraries (`ytmusicapi`, `spotapi`, ...) must be installed in the
-interpreter you use. Either reuse the backend venv:
+Dependencies are handled automatically (see step 1). To reuse the backend
+venv instead of the desktop one:
 
 ```bash
 ../backend/.venv/Scripts/python main.py   # Windows

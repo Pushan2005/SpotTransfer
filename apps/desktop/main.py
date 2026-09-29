@@ -6,15 +6,9 @@ so this file only contains UI + worker-thread orchestration:
     cd apps/desktop
     python main.py
 
-Backend dependencies (ytmusicapi, spotapi, ...) must be installed in the
-interpreter you use. Either reuse the backend venv:
-
-    ../backend/.venv/Scripts/python main.py   (Windows)
-    ../backend/.venv/bin/python main.py       (macOS/Linux)
-
-or install them once with:
-
-    pip install -r ../backend/requirements.txt
+On first run the script creates apps/desktop/.venv automatically, installs
+the backend dependencies (ytmusicapi, spotapi, ...) into it, and restarts
+itself inside that venv. No manual pip step, no Bun/Node.
 
 Sanity check without opening a window:
 
@@ -32,6 +26,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = BASE_DIR.parent / "backend"
+DESKTOP_VENV_DIR = BASE_DIR / ".venv"
 PROGRESS_PATH = BASE_DIR / "transfer_progress.json"
 _PROGRESS_VERSION = 1
 
@@ -50,6 +45,67 @@ except ImportError:
         file=sys.stderr,
     )
     raise SystemExit(1)
+
+
+def desktop_venv_python() -> Path:
+    if os.name == "nt":
+        return DESKTOP_VENV_DIR / "Scripts" / "python.exe"
+    return DESKTOP_VENV_DIR / "bin" / "python"
+
+
+def ensure_deps() -> None:
+    """Create apps/desktop/.venv and install backend deps on first run.
+
+    Re-executes this script with the venv interpreter afterwards, so the
+    rest of the file can import ytmusicapi/spotapi unconditionally.
+    """
+
+    try:
+        import spotapi  # noqa: F401
+        import ytmusicapi  # noqa: F401
+        return
+    except ImportError:
+        pass
+
+    venv_python = desktop_venv_python()
+    if venv_python.is_file() and (
+        Path(sys.executable).resolve() != venv_python.resolve()
+    ):
+        # Venv already set up, but we're running under a different
+        # interpreter (e.g. system python): jump straight into it.
+        os.execv(str(venv_python), [str(venv_python),
+                                    os.path.abspath(__file__),
+                                    *sys.argv[1:]])
+
+    if Path(sys.prefix).resolve() == DESKTOP_VENV_DIR.resolve():
+        raise SystemExit(
+            "Backend dependencies are still missing inside "
+            "apps/desktop/.venv. Delete that folder and try again, or "
+            "install manually: pip install -r ../backend/requirements.txt"
+        )
+
+    import subprocess
+
+    print("First run: creating apps/desktop/.venv …")
+    result = subprocess.run(
+        [sys.executable, "-m", "venv", str(DESKTOP_VENV_DIR)])
+    if result.returncode != 0:
+        raise SystemExit(
+            "Could not create the virtualenv"
+            + (" (Debian/Ubuntu: sudo apt install python3-venv)"
+               if os.name != "nt" else "")
+        )
+
+    print("Installing backend dependencies into apps/desktop/.venv …")
+    result = subprocess.run(
+        [str(venv_python), "-m", "pip", "install", "-r",
+         str(BACKEND_DIR / "requirements.txt")])
+    if result.returncode != 0:
+        raise SystemExit("pip install failed — see the output above.")
+
+    print("Restarting inside apps/desktop/.venv …")
+    os.execv(str(venv_python), [str(venv_python), os.path.abspath(__file__),
+                                *sys.argv[1:]])
 
 
 def load_backend():
@@ -452,6 +508,7 @@ def self_check() -> int:
 
 
 if __name__ == "__main__":
+    ensure_deps()
     if "--check" in sys.argv:
         raise SystemExit(self_check())
     root = tk.Tk()
