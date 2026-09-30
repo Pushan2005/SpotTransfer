@@ -380,8 +380,17 @@ def _artist_names(track: Mapping[str, object]) -> list[str]:
     return names
 
 
-def get_spotify_tracks(playlist_id: str) -> tuple[list[dict[str, object]], int]:
-    """Fetch all playlist pages with SpotAPI and normalize playable tracks."""
+def get_spotify_tracks(
+    playlist_id: str,
+    on_page=None,
+) -> tuple[list[dict[str, object]], int]:
+    """Fetch all playlist pages with SpotAPI and normalize playable tracks.
+
+    `on_page`, when given, is called as ``on_page(fetched_items,
+    total_items)`` after each page. It lets callers observe progress or
+    abort the fetch by raising; ``None`` (the CLI default) keeps the
+    original behavior.
+    """
 
     tracks: list[dict[str, object]] = []
     skipped_tracks = 0
@@ -419,6 +428,9 @@ def get_spotify_tracks(playlist_id: str) -> tuple[list[dict[str, object]], int]:
                 previous_status_length,
                 terminal_width,
             )
+
+            if on_page is not None:
+                on_page(fetched_items, total_items)
 
             for item in page_items:
                 track = _unwrap_spotify_track(item)

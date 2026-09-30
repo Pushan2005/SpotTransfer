@@ -4,85 +4,47 @@ SpotTransfer is a free, open-source tool for moving Spotify playlists to YouTube
 
 [![](https://star-history.dera.page/svg?repos=Pushan2005/SpotTransfer&type=date&legend=top-left)](https://star-history.dera.page/#Pushan2005/SpotTransfer&type=date&legend=top-left)
 
-This repo holds the web frontend (`apps/web`, Bun) and the self-hosted
-desktop client (`apps/desktop`, plain Python, intentionally outside the Bun
-workspaces).
+This repo holds the self-hosted desktop client (`apps/desktop`, plain Python)
+and the web frontend (`apps/web`).
 
-### Prerequisites
-- Bun 1.2+ (web frontend only)
-- Python 3.8+ for the desktop client (a `.venv` is created automatically on first run)
+### Quick start
 
-```bash
-git clone https://github.com/Pushan2005/SpotTransfer.git
-cd SpotTransfer
-bun install
-```
+You need Git and Python 3.8+ installed (on Debian/Ubuntu you may also need
+`sudo apt install python3-tk`).
 
-Copy the web env example:
-
-```bash
-cp apps/web/.env.example apps/web/.env
-```
-
-`apps/web/.env` holds `VITE_API_URL` (default `http://localhost:8080`).
-
-### Run the web app
-
-```bash
-bun run dev
-```
-
-This starts Vite (`http://localhost:5173`). To also open it in your browser:
-
-```bash
-bun run dev:all
-```
-
-Other root scripts: `bun run build`, `bun run lint`, `bun run preview`.
-
-### Desktop client (no Bun needed)
-
-`apps/desktop/main.py` is a tkinter GUI with playlist-link and headers input
-fields. It runs on plain Python and sets up its own venv — see
-`apps/desktop/README.md`.
-
-### Get your YouTube Music request headers
-
-1. Open [music.youtube.com](https://music.youtube.com) and sign in to your Google account.
-2. Open your browser's developer tools and go to the **Network** tab.
-3. Filter the requests for `/browse` and find a successful `POST` request with a `200` status.
-    - In Firefox, right-click the request and choose **Copy > Copy Request Headers**.
-    - In Chrome or Edge, open the request, go to **Headers**, and copy everything from `accept: */*` to the end of **Request Headers**.
-4. Paste the copied request headers into the desktop app's headers box (or into `apps/desktop/browser.json` for the CLI flow) and save the file. Paste them into the file instead of the web-hosted form.
-
-### Run a transfer (self-hosted)
-
-Easiest: the desktop GUI (`apps/desktop/main.py`) takes the playlist link
-and headers as input fields. Prefer the terminal? Edit
-`apps/desktop/setup.py`:
-
-    ```python
-    spotify_playlist_link = "https://open.spotify.com/playlist/your-playlist-id"
-    ```
-
-then, from `apps/desktop`, run the venv interpreter on `selfhost.py`:
+1.  (a) Copy and Paste this into your terminal and run:
 
     ```bash
-    .venv/Scripts/python selfhost.py   # Windows
-    .venv/bin/python selfhost.py       # macOS/Linux
+    git clone https://github.com/Pushan2005/SpotTransfer.git
+    cd SpotTransfer/apps/desktop
+    python main.py
     ```
 
-For a new playlist, change `spotify_playlist_link` in `setup.py` and run `selfhost.py` again. Repeat this for each playlist you want to transfer.
+1.  (b) If you don't have Git, download the ZIP and run the commands below in the
+    extracted folder instead:
+
+        ```bash
+        cd apps/desktop
+        python main.py
+        ```
+
+1.  Open [music.youtube.com](https://music.youtube.com) and sign in to your Google account.
+1.  Open your browser's developer tools and go to the **Network** tab.
+1.  Filter the requests for `/browse` and find a successful `POST` request with a `200` status.
+    - In Firefox, right-click the request and choose **Copy > Copy Request Headers**.
+    - In Chrome or Edge, open the request, go to **Headers**, and copy everything from `accept: */*` to the end of **Request Headers**.
+1.  Paste the copied request headers into the app's headers box.
+1.  Paste your Spotify playlist link and click on `Clone Playlist`
 
 ### Authentication issues
 
 The YouTube Music request headers expire periodically, which is most noticeable on large playlists. When that happens the script pauses the transfer, saves its progress to `apps/desktop/transfer_progress.json`, and tells you what to do:
 
 1. Get a fresh set of request headers from YouTube Music.
-2. Delete the contents of `apps/desktop/browser.json` (CLI flow), paste the new headers in, and **save the file**. In the GUI, just paste the fresh headers into the headers box.
-3. Run the transfer again. The script re-reads the headers on startup and resumes from where it stopped — already-searched tracks are not repeated.
+2. Paste the fresh headers into the headers box.
+3. Click "Clone Playlist" again. The app resumes from where it left off.
 
-Starting a transfer for a different playlist (by changing `spotify_playlist_link` in `setup.py`) automatically discards any saved progress for the previous one.
+**Starting a transfer for a different playlist automatically discards any saved progress of the previous one.**
 
 # Acknowledgements
 

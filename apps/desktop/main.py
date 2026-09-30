@@ -42,6 +42,29 @@ except ImportError:
     raise SystemExit(1)
 
 
+def enable_hidpi() -> None:
+    """Opt out of Windows bitmap scaling so the UI renders crisply.
+
+    Without this, Windows virtualizes tkinter apps on high-DPI displays
+    and upscales the window as a bitmap, which looks blurry/low-res.
+    Per-monitor awareness (level 2) re-renders crisply on every display,
+    so dragging the window to a monitor with different scaling stays
+    sharp. Falls back to system-DPI awareness where unavailable.
+    Must run before the first Tk() instance is created.
+    """
+
+    if os.name != "nt":
+        return
+    try:
+        from ctypes import windll
+        try:
+            windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
+
+
 def desktop_venv_python() -> Path:
     if os.name == "nt":
         return DESKTOP_VENV_DIR / "Scripts" / "python.exe"
@@ -186,12 +209,12 @@ AUTH_HELP = (
     "  1. Copy a fresh set of request headers from an authenticated\n"
     "     music.youtube.com /browse request (see README).\n"
     "  2. Paste them into the headers box in this window.\n"
-    "  3. Press Start Transfer again to resume where it stopped."
+    "  3. Press Clone Playlist again to resume where it stopped."
 )
 
 
 def run_transfer(playlist_link: str, auth_headers_raw: str,
-                 events: "queue.Queue", cancel: threading.Event) -> None:
+                 events: "queue.Queue") -> None:
     """Worker-thread body. Never touches widgets — reports via `events`."""
 
     def emit(kind: str, *payload) -> None:
@@ -232,9 +255,15 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
         else:
             emit("mode", "indeterminate")
             emit("status", "Fetching Spotify playlist…")
+
+            def on_fetch_page(fetched: int, total: int) -> None:
+                emit("status", f"Fetching Spotify playlist… "
+                               f"({fetched}/{total} items)")
+
             try:
                 playlist_name = backend.get_spotify_playlist_name(playlist_link)
-                tracks, skipped = backend.get_spotify_tracks(playlist_id)
+                tracks, skipped = backend.get_spotify_tracks(
+                    playlist_id, on_page=on_fetch_page)
             except Exception as error:
                 emit("failed", f"Could not read the Spotify playlist: {error}",
                      "error")
@@ -276,10 +305,6 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
         emit("progress", start, total)
 
         for index in range(start, total):
-            if cancel.is_set():
-                emit("finished", {"cancelled": True,
-                                  "done": index, "total": total})
-                return
             track = tracks[index]
             name = str(track.get("name", ""))
             artists = track.get("artists") or []
@@ -344,85 +369,217 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
 
 
 class App:
+    LINK_PLACEHOLDER = "open.spotify.com/playlist/..."
+    HEADERS_PLACEHOLDER = "Paste your headers here"
+
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         root.title("SpotTransfer")
-        root.minsize(560, 620)
+        root.minsize(760, 560)
 
         self.events: queue.Queue = queue.Queue()
-        self.cancel = threading.Event()
         self.worker: threading.Thread | None = None
 
-        frame = ttk.Frame(root, padding=12)
+        frame = ttk.Frame(root, padding=16)
         frame.grid(row=0, column=0, sticky="nsew")
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
         frame.columnconfigure(0, weight=1)
 
-        ttk.Label(frame, text="Spotify playlist link:").grid(
+        top = ttk.Frame(frame)
+        top.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        top.columnconfigure(0, weight=1)
+        ttk.Label(top, text="TRANSFER",
+                  font=("TkDefaultFont", 9, "bold")).grid(
             row=0, column=0, sticky="w")
-        self.link = ttk.Entry(frame)
-        self.link.grid(row=1, column=0, sticky="ew", pady=(2, 8))
-        self.link.insert(0, "https://open.spotify.com/playlist/")
+        self.theme_btn = ttk.Button(top, text="Theme: Light",
+                                    command=self.toggle_theme,
+                                    state="disabled")
+        self.theme_btn.grid(row=0, column=1, sticky="e")
 
-        ttk.Label(frame, text="YouTube Music request headers:").grid(
-            row=2, column=0, sticky="w")
-        ttk.Label(
-            frame,
-            text="Paste raw headers from an authenticated "
-                 "music.youtube.com /browse request.",
-            foreground="gray",
-        ).grid(row=3, column=0, sticky="w")
-        headers_frame = ttk.Frame(frame)
-        headers_frame.grid(row=4, column=0, sticky="nsew", pady=(2, 8))
-        headers_frame.columnconfigure(0, weight=1)
-        headers_frame.rowconfigure(0, weight=1)
-        self.headers = tk.Text(headers_frame, height=10, wrap="none",
+        columns = ttk.Frame(frame)
+        columns.grid(row=1, column=0, sticky="nsew")
+        columns.columnconfigure(0, weight=1)
+        columns.columnconfigure(1, weight=1)
+        columns.rowconfigure(0, weight=1)
+
+        left = ttk.Frame(columns)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        left.columnconfigure(0, weight=1)
+        left.rowconfigure(1, weight=1)
+        ttk.Label(left, text="Paste headers here").grid(
+            row=0, column=0, sticky="w", pady=(0, 4))
+        headers_box = ttk.Frame(left)
+        headers_box.grid(row=1, column=0, sticky="nsew")
+        headers_box.columnconfigure(0, weight=1)
+        headers_box.rowconfigure(0, weight=1)
+        self.headers = tk.Text(headers_box, wrap="none",
                                font=("TkDefaultFont", 9))
-        headers_scroll = ttk.Scrollbar(headers_frame, orient="vertical",
+        headers_scroll = ttk.Scrollbar(headers_box, orient="vertical",
                                        command=self.headers.yview)
         self.headers.configure(yscrollcommand=headers_scroll.set)
         self.headers.grid(row=0, column=0, sticky="nsew")
         headers_scroll.grid(row=0, column=1, sticky="ns")
+        self.headers_has_placeholder = True
+        self.headers.insert("1.0", self.HEADERS_PLACEHOLDER)
+        self.headers.bind("<FocusIn>", self._clear_headers_placeholder)
+        self.headers.bind("<FocusOut>", self._restore_headers_placeholder)
+        self.headers.bind("<KeyRelease>",
+                          lambda _event: self.refresh_start_state())
 
-        buttons = ttk.Frame(frame)
-        buttons.grid(row=5, column=0, sticky="ew", pady=(0, 8))
-        self.start_btn = ttk.Button(buttons, text="Start Transfer",
-                                    command=self.start)
-        self.start_btn.pack(side="left")
-        self.stop_btn = ttk.Button(buttons, text="Stop",
-                                   command=self.stop, state="disabled")
-        self.stop_btn.pack(side="left", padx=(8, 0))
-        self.theme_btn = ttk.Button(buttons, text="Theme: Light",
-                                    command=self.toggle_theme,
-                                    state="disabled")
-        self.theme_btn.pack(side="left", padx=(8, 0))
+        right = ttk.Frame(columns)
+        right.grid(row=0, column=1, sticky="nsew", padx=(12, 0))
+        right.columnconfigure(0, weight=1)
+        ttk.Label(right, text="Spotify playlist URL").grid(
+            row=0, column=0, sticky="w")
+        ttk.Label(right, text="\u24d8 The playlist must be public",
+                  foreground="gray",
+                  font=("TkDefaultFont", 8)).grid(
+            row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(right,
+                  text="\u26a0 Headers expire \u2014 paste a fresh set "
+                       "if the transfer pauses.",
+                  foreground="gray", font=("TkDefaultFont", 8),
+                  wraplength=300, justify="left").grid(
+            row=2, column=0, sticky="w")
+        self.link_var = tk.StringVar(value=self.LINK_PLACEHOLDER)
+        self.link_has_placeholder = True
+        self.link = ttk.Entry(right, textvariable=self.link_var)
+        self.link.grid(row=3, column=0, sticky="ew", pady=(6, 8))
+        self.link.bind("<FocusIn>", self._clear_link_placeholder)
+        self.link.bind("<FocusOut>", self._restore_link_placeholder)
+        self.link_var.trace_add(
+            "write", lambda *_args: self.refresh_start_state())
+        self.start_btn = ttk.Button(right, text="Clone Playlist",
+                                    command=self.start, state="disabled")
+        self.start_btn.grid(row=4, column=0, sticky="ew", pady=(0, 8))
 
-        self.status = ttk.Label(frame, text="Ready.")
-        self.status.grid(row=6, column=0, sticky="w")
-        self.progress = ttk.Progressbar(frame, mode="determinate")
-        self.progress.grid(row=7, column=0, sticky="ew", pady=(2, 8))
+        self.status = ttk.Label(right, text="Ready.", width=40)
+        self.status.grid(row=6, column=0, sticky="w", pady=(8, 0))
+        self.progress = ttk.Progressbar(right, mode="determinate")
+        self.progress.grid(row=7, column=0, sticky="ew", pady=(2, 0))
 
-        ttk.Label(frame, text="Log:").grid(row=8, column=0, sticky="w")
+        ttk.Label(frame, text="Log:").grid(row=2, column=0, sticky="w",
+                                           pady=(12, 0))
         log_frame = ttk.Frame(frame)
-        log_frame.grid(row=9, column=0, sticky="nsew")
+        log_frame.grid(row=3, column=0, sticky="ew")
         log_frame.columnconfigure(0, weight=1)
-        log_frame.rowconfigure(0, weight=1)
-        self.log = tk.Text(log_frame, height=10, state="disabled",
+        self.log = tk.Text(log_frame, height=8, state="disabled",
                            wrap="word", font=("TkDefaultFont", 9))
         log_scroll = ttk.Scrollbar(log_frame, orient="vertical",
                                    command=self.log.yview)
         self.log.configure(yscrollcommand=log_scroll.set)
-        self.log.grid(row=0, column=0, sticky="nsew")
+        self.log.grid(row=0, column=0, sticky="ew")
         log_scroll.grid(row=0, column=1, sticky="ns")
 
-        frame.rowconfigure(4, weight=1)
-        frame.rowconfigure(9, weight=2)
+        frame.rowconfigure(1, weight=1)
 
         self.dark_mode = False
         self.apply_theme()
+        self.refresh_start_state()
+
+        self.overlay = None
+        self.overlay_status = None
+        self.overlay_progress = None
+        self.root.bind("<Configure>", self._sync_overlay_geometry, add="+")
 
         self.root.after(100, self.pump)
+
+    def show_overlay(self) -> None:
+        """Cover the window with a semi-transparent progress modal."""
+
+        if self.overlay is not None:
+            return
+        self.root.update_idletasks()
+        overlay = tk.Toplevel(self.root)
+        overlay.overrideredirect(True)
+        overlay.transient(self.root)
+        try:
+            overlay.attributes("-alpha", 0.85)
+        except tk.TclError:
+            pass
+        outer = ttk.Frame(overlay)
+        outer.pack(fill="both", expand=True)
+        content = ttk.Frame(outer)
+        content.place(relx=0.5, rely=0.5, anchor="center")
+        ttk.Label(content, text="Transferring playlist…",
+                  font=("TkDefaultFont", 12, "bold")).pack(pady=(0, 8))
+        self.overlay_status = ttk.Label(content, text="Starting…",
+                                        wraplength=420, justify="center")
+        self.overlay_status.pack(pady=(0, 8))
+        self.overlay_progress = ttk.Progressbar(content, mode="determinate",
+                                                length=360)
+        self.overlay_progress.pack()
+        self.overlay = overlay
+        self._sync_overlay_geometry()
+        try:
+            overlay.grab_set()
+        except tk.TclError:
+            pass
+
+    def hide_overlay(self) -> None:
+        overlay, self.overlay = self.overlay, None
+        self.overlay_status = None
+        self.overlay_progress = None
+        if overlay is not None:
+            try:
+                overlay.grab_release()
+            except tk.TclError:
+                pass
+            overlay.destroy()
+
+    def _sync_overlay_geometry(self, _event=None) -> None:
+        if self.overlay is None:
+            return
+        try:
+            self.overlay.geometry(
+                f"{self.root.winfo_width()}x{self.root.winfo_height()}"
+                f"+{self.root.winfo_rootx()}+{self.root.winfo_rooty()}")
+        except tk.TclError:
+            pass
+
+    @staticmethod
+    def _short_status(text: str, limit: int = 90) -> str:
+        text = str(text)
+        return text if len(text) <= limit else text[:limit - 1] + "…"
+
+    def playlist_url(self) -> str:
+        if self.link_has_placeholder:
+            return ""
+        return self.link_var.get().strip()
+
+    def headers_text(self) -> str:
+        if self.headers_has_placeholder:
+            return ""
+        return self.headers.get("1.0", "end")
+
+    def refresh_start_state(self) -> None:
+        if self.worker is not None and self.worker.is_alive():
+            return
+        url = self.playlist_url()
+        ready = bool(url and "open.spotify.com/playlist/" in url
+                     and self.headers_text().strip())
+        self.start_btn.configure(state="normal" if ready else "disabled")
+
+    def _clear_link_placeholder(self, _event) -> None:
+        if self.link_has_placeholder:
+            self.link_has_placeholder = False
+            self.link_var.set("")
+
+    def _restore_link_placeholder(self, _event) -> None:
+        if not self.link_var.get().strip():
+            self.link_has_placeholder = True
+            self.link_var.set(self.LINK_PLACEHOLDER)
+
+    def _clear_headers_placeholder(self, _event) -> None:
+        if self.headers_has_placeholder:
+            self.headers_has_placeholder = False
+            self.headers.delete("1.0", "end")
+
+    def _restore_headers_placeholder(self, _event) -> None:
+        if not self.headers.get("1.0", "end").strip():
+            self.headers_has_placeholder = True
+            self.headers.insert("1.0", self.HEADERS_PLACEHOLDER)
 
     def apply_theme(self) -> None:
         try:
@@ -454,29 +611,27 @@ class App:
         self.log.configure(state="disabled")
 
     def set_running(self, running: bool) -> None:
-        self.start_btn.configure(state="disabled" if running else "normal")
-        self.stop_btn.configure(state="normal" if running else "disabled")
         self.link.configure(state="disabled" if running else "normal")
         self.headers.configure(state="disabled" if running else "normal")
+        if running:
+            self.start_btn.configure(state="disabled")
+        else:
+            self.refresh_start_state()
 
     def start(self) -> None:
         if self.worker is not None and self.worker.is_alive():
             return
-        link = self.link.get().strip()
-        headers_raw = self.headers.get("1.0", "end")
-        self.cancel.clear()
+        link = self.playlist_url()
+        headers_raw = self.headers_text()
         self.set_running(True)
+        self.show_overlay()
         self.append_log(f"Starting transfer for {link or '(no link)'}")
         self.worker = threading.Thread(
             target=run_transfer,
-            args=(link, headers_raw, self.events, self.cancel),
+            args=(link, headers_raw, self.events),
             daemon=True,
         )
         self.worker.start()
-
-    def stop(self) -> None:
-        self.cancel.set()
-        self.status.configure(text="Stopping after the current track…")
 
     def pump(self) -> None:
         try:
@@ -491,16 +646,26 @@ class App:
         kind = event[0]
         if kind == "status":
             self.status.configure(text=event[1])
+            if self.overlay_status is not None:
+                self.overlay_status.configure(
+                    text=self._short_status(event[1]))
         elif kind == "log":
             self.append_log(event[1])
         elif kind == "mode":
             self.progress.configure(mode=event[1])
+            if self.overlay_progress is not None:
+                self.overlay_progress.configure(mode=event[1])
             if event[1] == "determinate":
                 self.progress.configure(maximum=event[2], value=0)
+                if self.overlay_progress is not None:
+                    self.overlay_progress.configure(maximum=event[2], value=0)
         elif kind == "progress":
             self.progress.configure(value=event[1])
+            if self.overlay_progress is not None:
+                self.overlay_progress.configure(value=event[1])
         elif kind == "failed":
             message, failure_kind = event[1], event[2]
+            self.hide_overlay()
             self.set_running(False)
             self.status.configure(text="Failed.")
             self.append_log(f"FAILED: {message}")
@@ -509,28 +674,23 @@ class App:
             else:
                 messagebox.showerror("Transfer failed", message)
         elif kind == "finished":
+            self.hide_overlay()
             self.set_running(False)
             result = event[1]
-            if result.get("cancelled"):
-                self.status.configure(text="Stopped.")
-                self.append_log(
-                    f"Stopped at track {result['done']}/{result['total']}. "
-                    "Progress is saved — press Start Transfer to resume.")
-            else:
-                self.status.configure(text="Done.")
-                self.progress.configure(value=self.progress.cget("maximum"))
-                self.append_log(
-                    f"Created private YouTube Music playlist: "
-                    f"{result['playlist_name']} (ID: {result['playlist_id']})")
-                missed = result.get("missed") or []
-                if missed:
-                    self.append_log(f"{len(missed)} track(s) not found:")
-                    for track in missed:
-                        self.append_log(f"  - {track}")
-                messagebox.showinfo(
-                    "Playlist created",
-                    f"'{result['playlist_name']}' created "
-                    f"({result['found']}/{result['total']} tracks found).")
+            self.status.configure(text="Done.")
+            self.progress.configure(value=self.progress.cget("maximum"))
+            self.append_log(
+                f"Created private YouTube Music playlist: "
+                f"{result['playlist_name']} (ID: {result['playlist_id']})")
+            missed = result.get("missed") or []
+            if missed:
+                self.append_log(f"{len(missed)} track(s) not found:")
+                for track in missed:
+                    self.append_log(f"  - {track}")
+            messagebox.showinfo(
+                "Playlist created",
+                f"'{result['playlist_name']}' created "
+                f"({result['found']}/{result['total']} tracks found).")
 
 
 def self_check() -> int:
@@ -560,6 +720,7 @@ def self_check() -> int:
 
 
 if __name__ == "__main__":
+    enable_hidpi()
     ensure_deps()
     if "--check" in sys.argv:
         raise SystemExit(self_check())
