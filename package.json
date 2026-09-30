@@ -1,0 +1,20 @@
+{
+  "name": "spottransfer",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "cd apps/web && bun run dev",
+    "dev:all": "cd apps/web && bun run dev:open",
+    "build": "cd apps/web && bun run build",
+    "lint": "cd apps/web && bun run lint"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.2.19"
+    }
+  }
+}

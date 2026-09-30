@@ -1,0 +1,4 @@
+transfer_progress.json
+transfer_progress.json.tmp
+.venv/
+__pycache__/

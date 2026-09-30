@@ -1,5 +1,6 @@
 import { Footer } from "@/components/landing/footer";
 import Navbar from "@/nav-bar.tsx";
+import { Link } from "react-router-dom";
 
 interface Announcement {
     id: string;
@@ -127,10 +128,9 @@ Open to suggestions. If you have any, please reach out to me on GitHub.
     },
     {
         id: "11",
-        date: "August 24, 2026",
-        title: "SpotTransfer is undergoing maintenance",
-        content:
-            "I am currently working on a fix to let people use the app uninterrupted again, please check back in a day or two.",
+        date: "September 30, 2026",
+        title: "SpotTransfer v2 is up",
+        content: "SpotTransfer is working again! Download it and try it out.",
         type: "info",
     },
 ];
@@ -208,17 +208,29 @@ export default function Announcements() {
                                                 </div>
                                                 <div className="mt-2 text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
                                                     {announcement.content}
+                                                    {announcement.id ===
+                                                        "11" && (
+                                                        <>
+                                                            {" "}
+                                                            <a
+                                                                href="/guide"
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="text-primary hover:underline"
+                                                            >
+                                                                Check it out
+                                                                here
+                                                            </a>
+                                                        </>
+                                                    )}
                                                 </div>
                                                 {announcement.id === "7" && (
-                                                    <a
-                                                        href="https://github.com/Pushan2005/SpotTransfer"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                    <Link
+                                                        to="/guide"
                                                         className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-primary hover:underline"
                                                     >
-                                                        View self-hosting guide
-                                                        &rarr;
-                                                    </a>
+                                                        View the guide &rarr;
+                                                    </Link>
                                                 )}
                                             </div>
                                         </div>

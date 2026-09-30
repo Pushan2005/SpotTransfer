@@ -4,55 +4,47 @@ SpotTransfer is a free, open-source tool for moving Spotify playlists to YouTube
 
 [![](https://star-history.dera.page/svg?repos=Pushan2005/SpotTransfer&type=date&legend=top-left)](https://star-history.dera.page/#Pushan2005/SpotTransfer&type=date&legend=top-left)
 
-### Prerequisites
-- Python 3.8+
+This repo holds the self-hosted desktop client (`apps/desktop`, plain Python)
+and the web frontend (`apps/web`).
 
-Clone the repository and install the backend dependencies:
+### Quick start
 
-```bash
-git clone https://github.com/Pushan2005/SpotTransfer.git
-cd SpotTransfer/backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+You need Git and Python 3.8+ installed (on Debian/Ubuntu you may also need
+`sudo apt install python3-tk`).
 
-On Windows, activate the virtual environment with `venv\Scripts\activate` instead.
-
-### Get your YouTube Music request headers
-
-1. Open [music.youtube.com](https://music.youtube.com) and sign in to your Google account.
-2. Open your browser's developer tools and go to the **Network** tab.
-3. Filter the requests for `/browse` and find a successful `POST` request with a `200` status.
-    - In Firefox, right-click the request and choose **Copy > Copy Request Headers**.
-    - In Chrome or Edge, open the request, go to **Headers**, and copy everything from `accept: */*` to the end of **Request Headers**.
-4. Paste the copied request headers into `backend/browser.json` and save the file. Paste them into the file instead of the web-hosted form.
-
-### Run a transfer
-
-1. Open `backend/setup.py` and paste your Spotify playlist link into the variable:
-
-    ```python
-    spotify_playlist_link = "https://open.spotify.com/playlist/your-playlist-id"
-    ```
-
-2. From the `backend` directory, run:
+1.  (a) Copy and Paste this into your terminal and run:
 
     ```bash
-    python3 selfhost.py
+    git clone https://github.com/Pushan2005/SpotTransfer.git
+    cd SpotTransfer/apps/desktop
+    python main.py
     ```
 
-For a new playlist, change `spotify_playlist_link` in `setup.py` and run `python3 selfhost.py` again. Repeat this for each playlist you want to transfer.
+1.  (b) If you don't have Git, download the ZIP and run the commands below in the
+    extracted folder instead:
+
+        ```bash
+        cd apps/desktop
+        python main.py
+        ```
+
+1.  Open [music.youtube.com](https://music.youtube.com) and sign in to your Google account.
+1.  Open your browser's developer tools and go to the **Network** tab.
+1.  Filter the requests for `/browse` and find a successful `POST` request with a `200` status.
+    - In Firefox, right-click the request and choose **Copy > Copy Request Headers**.
+    - In Chrome or Edge, open the request, go to **Headers**, and copy everything from `accept: */*` to the end of **Request Headers**.
+1.  Paste the copied request headers into the app's headers box.
+1.  Paste your Spotify playlist link and click on `Clone Playlist`
 
 ### Authentication issues
 
-The YouTube Music request headers in `browser.json` expire periodically, which is most noticeable on large playlists. When that happens the script pauses the transfer, saves its progress to `backend/transfer_progress.json`, and tells you what to do:
+The YouTube Music request headers expire periodically, which is most noticeable on large playlists. When that happens the script pauses the transfer, saves its progress to `apps/desktop/transfer_progress.json`, and tells you what to do:
 
 1. Get a fresh set of request headers from YouTube Music.
-2. Delete the contents of `backend/browser.json`, paste the new headers in, and **save the file**.
-3. Run `python3 selfhost.py` again. The script re-reads `browser.json` on startup and resumes the transfer from where it stopped — already-searched tracks are not repeated.
+2. Paste the fresh headers into the headers box.
+3. Click "Clone Playlist" again. The app resumes from where it left off.
 
-Starting a transfer for a different playlist (by changing `spotify_playlist_link` in `setup.py`) automatically discards any saved progress for the previous one.
+**Starting a transfer for a different playlist automatically discards any saved progress of the previous one.**
 
 # Acknowledgements
 
