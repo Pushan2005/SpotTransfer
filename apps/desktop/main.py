@@ -437,7 +437,7 @@ class App:
                   font=("TkDefaultFont", 8)).grid(
             row=1, column=0, sticky="w", pady=(2, 0))
         ttk.Label(right,
-                  text="\u26a0 Headers expire \u2014 paste a fresh set "
+                  text="\u26a0 Headers may expire midway \u2014 paste a fresh set "
                        "if the transfer pauses.",
                   foreground="gray", font=("TkDefaultFont", 8),
                   wraplength=300, justify="left").grid(

@@ -9,8 +9,7 @@
     "dev": "cd apps/web && bun run dev",
     "dev:all": "cd apps/web && bun run dev:open",
     "build": "cd apps/web && bun run build",
-    "lint": "cd apps/web && bun run lint",
-    "preview": "cd apps/web && bun run preview"
+    "lint": "cd apps/web && bun run lint"
   },
   "devEngines": {
     "packageManager": {

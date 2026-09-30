@@ -128,10 +128,9 @@ Open to suggestions. If you have any, please reach out to me on GitHub.
     },
     {
         id: "11",
-        date: "August 24, 2026",
-        title: "SpotTransfer is undergoing maintenance",
-        content:
-            "I am currently working on a fix to let people use the app uninterrupted again, please check back in a day or two.",
+        date: "September 30, 2026",
+        title: "SpotTransfer v2 is up",
+        content: "SpotTransfer is working again! Download it and try it out.",
         type: "info",
     },
 ];
@@ -209,6 +208,21 @@ export default function Announcements() {
                                                 </div>
                                                 <div className="mt-2 text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
                                                     {announcement.content}
+                                                    {announcement.id ===
+                                                        "11" && (
+                                                        <>
+                                                            {" "}
+                                                            <a
+                                                                href="/guide"
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="text-primary hover:underline"
+                                                            >
+                                                                Check it out
+                                                                here
+                                                            </a>
+                                                        </>
+                                                    )}
                                                 </div>
                                                 {announcement.id === "7" && (
                                                     <Link
