@@ -10,6 +10,7 @@ venv/
 __pycache__/
 *.pyc
 *.pyo
+/apps/desktop/logs/
 
 # env
 .env

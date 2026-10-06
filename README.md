@@ -46,6 +46,10 @@ The YouTube Music request headers expire periodically, which is most noticeable 
 
 **Starting a transfer for a different playlist automatically discards any saved progress of the previous one.**
 
+### Reporting errors
+
+If the desktop app fails, send `apps/desktop/logs/spottransfer.log`. If numbered backup logs are present, send the entire `apps/desktop/logs` folder.
+
 # Acknowledgements
 
 [Aran404](https://github.com/Aran404/) for SpotAPI

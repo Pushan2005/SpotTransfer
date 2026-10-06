@@ -22,6 +22,7 @@ import os
 import queue
 import sys
 import threading
+import webbrowser
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -29,10 +30,15 @@ DESKTOP_VENV_DIR = BASE_DIR / ".venv"
 PROGRESS_PATH = BASE_DIR / "transfer_progress.json"
 _PROGRESS_VERSION = 1
 
+from logging_config import configure_logging, logger
+
+configure_logging()
+
 try:
     import tkinter as tk
     from tkinter import messagebox, ttk
 except ImportError:
+    logger.exception("Tkinter could not be imported")
     print(
         "tkinter is not available for this Python install.\n"
         "  Windows/macOS (python.org): tkinter ships with Python.\n"
@@ -96,6 +102,7 @@ def ensure_deps() -> None:
                                     *sys.argv[1:]])
 
     if Path(sys.prefix).resolve() == DESKTOP_VENV_DIR.resolve():
+        logger.error("Backend dependencies are missing from the desktop virtualenv")
         raise SystemExit(
             "Backend dependencies are still missing inside "
             "apps/desktop/.venv. Delete that folder and try again, or "
@@ -108,6 +115,8 @@ def ensure_deps() -> None:
     result = subprocess.run(
         [sys.executable, "-m", "venv", str(DESKTOP_VENV_DIR)])
     if result.returncode != 0:
+        logger.error("Virtualenv creation failed with exit code %d",
+                     result.returncode)
         raise SystemExit(
             "Could not create the virtualenv"
             + (" (Debian/Ubuntu: sudo apt install python3-venv)"
@@ -119,6 +128,8 @@ def ensure_deps() -> None:
         [str(venv_python), "-m", "pip", "install", "-r",
          str(BASE_DIR / "requirements.txt")])
     if result.returncode != 0:
+        logger.error("Desktop dependency installation failed with exit code %d",
+                     result.returncode)
         raise SystemExit("pip install failed — see the output above.")
 
     print("Restarting inside apps/desktop/.venv …")
@@ -151,6 +162,8 @@ def load_progress() -> dict | None:
     try:
         progress = json.loads(PROGRESS_PATH.read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, OSError):
+        logger.warning("Could not read saved transfer progress; starting fresh",
+                       exc_info=True)
         return None
     if (
         not isinstance(progress, dict)
@@ -158,6 +171,7 @@ def load_progress() -> dict | None:
         or not isinstance(progress.get("playlist_id"), str)
         or not isinstance(progress.get("tracks"), list)
     ):
+        logger.warning("Saved transfer progress has an unsupported format")
         return None
     return progress
 
@@ -212,6 +226,8 @@ AUTH_HELP = (
     "  3. Press Clone Playlist again to resume where it stopped."
 )
 
+GITHUB_URL = "https://github.com/Pushan2005/SpotTransfer"
+
 
 def run_transfer(playlist_link: str, auth_headers_raw: str,
                  events: "queue.Queue") -> None:
@@ -220,28 +236,40 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
     def emit(kind: str, *payload) -> None:
         events.put((kind,) + payload)
 
+    logger.info("===== Transfer started (GUI) =====")
     try:
         backend = load_backend()
     except RuntimeError as error:
+        logger.exception("Could not load transfer backend")
+        logger.info("===== Transfer failed (GUI setup) =====")
         emit("failed", str(error), "setup")
+        return
+    except Exception as error:
+        logger.exception("Unexpected failure loading transfer backend")
+        logger.info("===== Transfer failed (GUI setup) =====")
+        emit("failed", f"Unexpected error: {error}", "error")
         return
 
     try:
         try:
             playlist_id = backend.extract_spotify_playlist_id(playlist_link)
         except ValueError as error:
+            logger.warning("Spotify playlist URL failed validation: %s", error)
+            logger.info("===== Transfer failed (validation) =====")
             emit("failed", str(error), "validation")
             return
+        logger.info("===== Transfer started (GUI) | playlist_id=%s =====", playlist_id)
 
         if not auth_headers_raw.strip():
+            logger.warning("Transfer validation failed: YouTube Music headers missing")
+            logger.info("===== Transfer failed (validation) | id=%s =====", playlist_id)
             emit("failed", "Paste your YouTube Music request headers first.",
                  "validation")
             return
 
         progress = load_progress()
         if progress is not None and progress.get("playlist_id") != playlist_id:
-            emit("log", "Found progress for a different playlist; "
-                        "starting a new transfer.")
+            logger.info("Found progress for a different playlist; starting fresh")
             clear_progress()
             progress = None
 
@@ -249,10 +277,11 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
             playlist_name = str(progress["playlist_name"])
             tracks = list(progress["tracks"])
             skipped = int(progress.get("skipped_tracks") or 0)
-            emit("log", f"Resuming '{playlist_name}' "
-                        f"({progress.get('searched') or 0}/{len(tracks)} "
-                        "tracks already searched).")
+            logger.info("===== Transfer started: '%s' (id=%s, GUI, resuming %d/%d already searched) =====",
+                        playlist_name, playlist_id,
+                        progress.get("searched") or 0, len(tracks))
         else:
+            logger.info("Fetching Spotify playlist (GUI, id=%s)", playlist_id)
             emit("mode", "indeterminate")
             emit("status", "Fetching Spotify playlist…")
 
@@ -262,12 +291,19 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
 
             try:
                 playlist_name = backend.get_spotify_playlist_name(playlist_link)
+                logger.info("===== Transfer started: '%s' (id=%s, GUI) =====",
+                            playlist_name, playlist_id)
                 tracks, skipped = backend.get_spotify_tracks(
                     playlist_id, on_page=on_fetch_page)
             except Exception as error:
+                logger.exception("Could not read Spotify playlist (GUI, id=%s)", playlist_id)
+                logger.info("===== Transfer failed (GUI Spotify fetch) | id=%s =====",
+                            playlist_id)
                 emit("failed", f"Could not read the Spotify playlist: {error}",
                      "error")
                 return
+            logger.info("Fetched %d tracks for '%s'; skipped %d unavailable items",
+                        len(tracks), playlist_name, skipped)
             progress = {
                 "version": _PROGRESS_VERSION,
                 "playlist_id": playlist_id,
@@ -283,16 +319,19 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
             save_progress(progress)
 
         if skipped:
-            emit("log", f"Skipped {skipped} Spotify item(s) without usable "
-                        "metadata (removed/unavailable tracks).")
+            logger.info("Skipped %d Spotify item(s) without usable metadata for '%s'",
+                        skipped, playlist_name)
 
         try:
             auth_config = backend.parse_browser_headers(auth_headers_raw)
         except ValueError as error:
+            logger.warning("YouTube Music headers failed validation: %s", error)
+            logger.info("===== Transfer failed (validation) | '%s' =====", playlist_name)
             emit("failed", str(error), "validation")
             return
 
         from ytmusicapi import YTMusic
+        logger.info("Loading YouTube Music auth for '%s' (GUI)", playlist_name)
         ytmusic = YTMusic(auth_config)
 
         video_ids: list[str] = list(progress.get("video_ids") or [])
@@ -301,6 +340,8 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
         total = len(tracks)
         if not 0 <= start <= total:
             start = 0
+        logger.info("Searching YouTube Music for '%s': %d tracks from item %d",
+                    playlist_name, total, start + 1)
         emit("mode", "determinate", total)
         emit("progress", start, total)
 
@@ -322,13 +363,24 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
                 )
             except Exception as error:
                 if backend._is_auth_error(error):
+                    logger.exception(
+                        "YouTube Music authentication failed (GUI) at [%d/%d] '%s'",
+                        index + 1, total, label)
+                    logger.info("===== Transfer paused (auth expired) | '%s' =====",
+                                playlist_name)
                     emit("failed", AUTH_HELP, "auth")
                     return
+                logger.exception(
+                    "YouTube Music search failed (GUI) at [%d/%d] '%s'; treating as not found",
+                    index + 1, total, label)
                 video_id = None
             if video_id is None:
                 missed.append(label)
+                logger.info("[%d/%d] YTM NOT FOUND: '%s'", index + 1, total, label)
             else:
                 video_ids.append(video_id)
+                logger.info("[%d/%d] YTM FOUND: '%s' -> %s",
+                            index + 1, total, label, video_id)
             progress["video_ids"] = video_ids
             progress["missed_tracks"] = missed
             progress["searched"] = index + 1
@@ -336,35 +388,62 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
             emit("progress", index + 1, total)
 
         if not video_ids:
+            logger.error("No Spotify tracks were found on YouTube Music for '%s'",
+                         playlist_name)
+            logger.info("===== Transfer failed (nothing found) | '%s' =====",
+                        playlist_name)
             emit("failed", "No Spotify tracks were found on YouTube Music.",
                  "error")
             return
 
         progress["search_complete"] = True
         save_progress(progress)
+        logger.info("YouTube Music search complete for '%s': found %d/%d; missed %d",
+                    playlist_name, len(video_ids), total, len(missed))
+        for missed_label in missed:
+            logger.info("YTM missed: '%s'", missed_label)
 
         emit("mode", "indeterminate")
         emit("status", f"Creating YouTube Music playlist '{playlist_name}'…")
+        logger.info("Creating YouTube Music playlist '%s' with %d tracks (GUI)",
+                    playlist_name, len(video_ids))
         try:
             created_id = ytmusic.create_playlist(
                 playlist_name, "", "PRIVATE", video_ids)
         except Exception as error:
             if backend._is_auth_error(error):
+                logger.exception("YouTube Music authentication failed creating playlist for '%s'",
+                                 playlist_name)
+                logger.info("===== Transfer paused (auth expired) | '%s' =====",
+                            playlist_name)
                 emit("failed", AUTH_HELP, "auth")
                 return
+            logger.exception("Could not create YouTube Music playlist for '%s'",
+                             playlist_name)
+            logger.info("===== Transfer failed (create) | '%s' =====", playlist_name)
             emit("failed", f"Could not create the playlist: {error}", "error")
             return
         if not created_id:
+            logger.error("YouTube Music did not return a playlist ID for '%s'",
+                         playlist_name)
+            logger.info("===== Transfer failed (no playlist ID) | '%s' =====",
+                        playlist_name)
             emit("failed", "YouTube Music did not return a playlist ID.",
                  "error")
             return
 
         clear_progress()
+        logger.info("Transfer completed for '%s': found %d of %d tracks; %d not found",
+                    playlist_name, len(video_ids), total, len(missed))
+        logger.info("===== Transfer finished: '%s' (id=%s) =====",
+                    playlist_name, playlist_id)
         emit("finished", {"playlist_id": created_id,
                           "playlist_name": playlist_name,
                           "missed": missed, "found": len(video_ids),
                           "total": total})
     except Exception as error:  # last-resort guard for the worker thread
+        logger.exception("Unexpected transfer failure")
+        logger.info("===== Transfer failed (unexpected) =====")
         emit("failed", f"Unexpected error: {error}", "error")
 
 
@@ -459,24 +538,12 @@ class App:
         self.progress = ttk.Progressbar(right, mode="determinate")
         self.progress.grid(row=7, column=0, sticky="ew", pady=(2, 0))
 
-        ttk.Label(frame, text="Log:").grid(row=2, column=0, sticky="w",
-                                           pady=(12, 0))
-        log_frame = ttk.Frame(frame)
-        log_frame.grid(row=3, column=0, sticky="ew")
-        log_frame.columnconfigure(0, weight=1)
-        self.log = tk.Text(log_frame, height=8, state="disabled",
-                           wrap="word", font=("TkDefaultFont", 9))
-        log_scroll = ttk.Scrollbar(log_frame, orient="vertical",
-                                   command=self.log.yview)
-        self.log.configure(yscrollcommand=log_scroll.set)
-        self.log.grid(row=0, column=0, sticky="ew")
-        log_scroll.grid(row=0, column=1, sticky="ns")
-
         frame.rowconfigure(1, weight=1)
 
         self.dark_mode = False
         self.apply_theme()
         self.refresh_start_state()
+        root.report_callback_exception = self._log_callback_exception
 
         self.overlay = None
         self.overlay_status = None
@@ -585,12 +652,12 @@ class App:
         try:
             import sv_ttk
         except ImportError:
-            self.append_log("sv-ttk not installed — using default theme.")
+            logger.info("sv-ttk not installed; using default theme")
             return
         sv_ttk.use_dark_theme()
         self.dark_mode = True
         self.theme_btn.configure(state="normal", text="Theme: Light")
-        sync_text_colors(self.root, True, self.headers, self.log)
+        sync_text_colors(self.root, True, self.headers)
 
     def toggle_theme(self) -> None:
         import sv_ttk
@@ -602,13 +669,12 @@ class App:
         self.theme_btn.configure(
             text="Theme: Light" if self.dark_mode else "Theme: Dark")
         sync_text_colors(self.root, self.dark_mode,
-                         self.headers, self.log)
+                         self.headers)
 
-    def append_log(self, message: str) -> None:
-        self.log.configure(state="normal")
-        self.log.insert("end", message + "\n")
-        self.log.see("end")
-        self.log.configure(state="disabled")
+    @staticmethod
+    def _log_callback_exception(exc_type, exc_value, exc_traceback) -> None:
+        logger.error("Tkinter callback failed",
+                     exc_info=(exc_type, exc_value, exc_traceback))
 
     def set_running(self, running: bool) -> None:
         self.link.configure(state="disabled" if running else "normal")
@@ -625,7 +691,6 @@ class App:
         headers_raw = self.headers_text()
         self.set_running(True)
         self.show_overlay()
-        self.append_log(f"Starting transfer for {link or '(no link)'}")
         self.worker = threading.Thread(
             target=run_transfer,
             args=(link, headers_raw, self.events),
@@ -649,8 +714,6 @@ class App:
             if self.overlay_status is not None:
                 self.overlay_status.configure(
                     text=self._short_status(event[1]))
-        elif kind == "log":
-            self.append_log(event[1])
         elif kind == "mode":
             self.progress.configure(mode=event[1])
             if self.overlay_progress is not None:
@@ -668,7 +731,6 @@ class App:
             self.hide_overlay()
             self.set_running(False)
             self.status.configure(text="Failed.")
-            self.append_log(f"FAILED: {message}")
             if failure_kind == "auth":
                 messagebox.showwarning("Headers expired", message)
             else:
@@ -679,18 +741,69 @@ class App:
             result = event[1]
             self.status.configure(text="Done.")
             self.progress.configure(value=self.progress.cget("maximum"))
-            self.append_log(
-                f"Created private YouTube Music playlist: "
-                f"{result['playlist_name']} (ID: {result['playlist_id']})")
-            missed = result.get("missed") or []
-            if missed:
-                self.append_log(f"{len(missed)} track(s) not found:")
-                for track in missed:
-                    self.append_log(f"  - {track}")
-            messagebox.showinfo(
-                "Playlist created",
-                f"'{result['playlist_name']}' created "
-                f"({result['found']}/{result['total']} tracks found).")
+            self.show_finished_dialog(result)
+
+    def show_finished_dialog(self, result: dict) -> None:
+        """Completion popup with a clickable GitHub star link."""
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Playlist created")
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+
+        frame = ttk.Frame(dialog, padding=16)
+        frame.grid(row=0, column=0, sticky="nsew")
+        frame.columnconfigure(0, weight=1)
+
+        ttk.Label(
+            frame,
+            text=f"'{result['playlist_name']}' created "
+            f"({result['found']}/{result['total']} tracks found).",
+            wraplength=360,
+            justify="left",
+        ).grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            frame,
+            text="Enjoying SpotTransfer? It's free — please star "
+            "the project on GitHub, it helps a lot:",
+            wraplength=360,
+            justify="left",
+        ).grid(row=1, column=0, sticky="w", pady=(12, 2))
+        link = ttk.Label(
+            frame,
+            text=GITHUB_URL,
+            foreground="#58a6ff",
+            cursor="hand2",
+            font=("TkDefaultFont", 9, "underline"),
+            takefocus=True,
+        )
+        link.grid(row=2, column=0, sticky="w")
+        def _open_link(_event=None):
+            webbrowser.open(GITHUB_URL)
+            return "break"
+
+        link.bind("<Button-1>", _open_link)
+        link.bind("<Return>", _open_link)
+
+        ok_btn = ttk.Button(frame, text="OK", command=dialog.destroy)
+        ok_btn.grid(row=3, column=0, sticky="e", pady=(16, 0))
+
+        dialog.bind("<Return>", lambda _event: dialog.destroy())
+        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+
+        dialog.update_idletasks()
+        x = self.root.winfo_rootx() + max(
+            0, (self.root.winfo_width() - dialog.winfo_width()) // 2)
+        y = self.root.winfo_rooty() + max(
+            0, (self.root.winfo_height() - dialog.winfo_height()) // 2)
+        dialog.geometry(f"+{x}+{y}")
+
+        try:
+            dialog.grab_set()
+        except tk.TclError:
+            pass
+        ok_btn.focus_set()
 
 
 def self_check() -> int:
