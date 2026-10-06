@@ -22,6 +22,7 @@ import os
 import queue
 import sys
 import threading
+import webbrowser
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -224,6 +225,8 @@ AUTH_HELP = (
     "  2. Paste them into the headers box in this window.\n"
     "  3. Press Clone Playlist again to resume where it stopped."
 )
+
+GITHUB_URL = "https://github.com/Pushan2005/SpotTransfer"
 
 
 def run_transfer(playlist_link: str, auth_headers_raw: str,
@@ -738,10 +741,69 @@ class App:
             result = event[1]
             self.status.configure(text="Done.")
             self.progress.configure(value=self.progress.cget("maximum"))
-            messagebox.showinfo(
-                "Playlist created",
-                f"'{result['playlist_name']}' created "
-                f"({result['found']}/{result['total']} tracks found).")
+            self.show_finished_dialog(result)
+
+    def show_finished_dialog(self, result: dict) -> None:
+        """Completion popup with a clickable GitHub star link."""
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Playlist created")
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+
+        frame = ttk.Frame(dialog, padding=16)
+        frame.grid(row=0, column=0, sticky="nsew")
+        frame.columnconfigure(0, weight=1)
+
+        ttk.Label(
+            frame,
+            text=f"'{result['playlist_name']}' created "
+            f"({result['found']}/{result['total']} tracks found).",
+            wraplength=360,
+            justify="left",
+        ).grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            frame,
+            text="Enjoying SpotTransfer? It's free — please star "
+            "the project on GitHub, it helps a lot:",
+            wraplength=360,
+            justify="left",
+        ).grid(row=1, column=0, sticky="w", pady=(12, 2))
+        link = ttk.Label(
+            frame,
+            text=GITHUB_URL,
+            foreground="#58a6ff",
+            cursor="hand2",
+            font=("TkDefaultFont", 9, "underline"),
+            takefocus=True,
+        )
+        link.grid(row=2, column=0, sticky="w")
+        def _open_link(_event=None):
+            webbrowser.open(GITHUB_URL)
+            return "break"
+
+        link.bind("<Button-1>", _open_link)
+        link.bind("<Return>", _open_link)
+
+        ok_btn = ttk.Button(frame, text="OK", command=dialog.destroy)
+        ok_btn.grid(row=3, column=0, sticky="e", pady=(16, 0))
+
+        dialog.bind("<Return>", lambda _event: dialog.destroy())
+        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+
+        dialog.update_idletasks()
+        x = self.root.winfo_rootx() + max(
+            0, (self.root.winfo_width() - dialog.winfo_width()) // 2)
+        y = self.root.winfo_rooty() + max(
+            0, (self.root.winfo_height() - dialog.winfo_height()) // 2)
+        dialog.geometry(f"+{x}+{y}")
+
+        try:
+            dialog.grab_set()
+        except tk.TclError:
+            pass
+        ok_btn.focus_set()
 
 
 def self_check() -> int:
