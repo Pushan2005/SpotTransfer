@@ -50,6 +50,14 @@ export default function Guide() {
 cd SpotTransfer/apps/desktop
 python main.py`}</CodeBlock>
                             <p>
+                                Already have SpotTransfer? Update to the latest
+                                version by running{" "}
+                                <InlineCode>git pull</InlineCode> from the
+                                project directory:
+                            </p>
+                            <CodeBlock>{`cd SpotTransfer
+git pull`}</CodeBlock>
+                            <p>
                                 No Git? Download the ZIP from{" "}
                                 <a
                                     href="https://github.com/Pushan2005/SpotTransfer"
@@ -92,8 +100,24 @@ python main.py`}</CodeBlock>
                                 headers into the app and click{" "}
                                 <strong>Clone Playlist</strong>.
                             </p>
+                            <p>
+                                Found SpotTransfer helpful? Please star the
+                                project on{" "}
+                                <a
+                                    href="https://github.com/Pushan2005/SpotTransfer"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-blue-600 underline underline-offset-2"
+                                >
+                                    GitHub
+                                </a>
+                                , it is free and it helps a lot!
+                            </p>
                             <p className="text-xs text-muted-foreground">
-                                This is a <strong className="underline underline-offset-2">screenshot of the app</strong>
+                                This is a{" "}
+                                <strong className="underline underline-offset-2">
+                                    screenshot of the app
+                                </strong>
                                 , not the app itself — follow step 01 above to
                                 run it on your computer.
                             </p>
@@ -129,6 +153,24 @@ python main.py`}</CodeBlock>
                                     Starting a transfer for a different playlist
                                     automatically discards any saved progress of
                                     the previous one.
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-red-500/30 bg-red-500/5">
+                            <CardContent className="p-6">
+                                <h2 className="font-semibold text-foreground">
+                                    Still stuck?
+                                </h2>
+                                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                                    Keep your log file handy — it records what
+                                    happened during each transfer and makes
+                                    debugging much faster. You can find it at{" "}
+                                    <InlineCode>
+                                        apps/desktop/logs/spottransfer.log
+                                    </InlineCode>
+                                    . If you report an issue, attach it so I can
+                                    take a look and get back to you.
                                 </p>
                             </CardContent>
                         </Card>
