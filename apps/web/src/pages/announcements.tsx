@@ -68,7 +68,7 @@ You'll now get a detailed report after each playlist transfer.`,
 - Reduced configuration complexity
 
 If you're experiencing timeout issues with the hosted version, self-hosting is now more accessible than ever!`,
-        type: "success",
+        type: "info",
     },
     {
         id: "6",
@@ -81,7 +81,7 @@ If you're experiencing timeout issues with the hosted version, self-hosting is n
 - Common troubleshooting solutions
 
 Self-hosting remains the best way to avoid timeout issues and get reliable playlist transfers.`,
-        type: "success",
+        type: "info",
     },
     {
         id: "7",
@@ -131,6 +131,15 @@ Open to suggestions. If you have any, please reach out to me on GitHub.
         date: "September 30, 2026",
         title: "SpotTransfer v2 is up",
         content: "SpotTransfer is working again! Download it and try it out.",
+        type: "success",
+    },
+    {
+        id: "12",
+        date: "October 6, 2026",
+        title: "Added logging to the desktop app",
+        content: `Added logs to the desktop app to make debugging transfer issues easier.
+
+If you run into an issue, keep that file handy and attach it when reporting it.`,
         type: "info",
     },
 ];

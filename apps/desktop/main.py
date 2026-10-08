@@ -189,8 +189,8 @@ def clear_progress() -> None:
         pass
 
 
-def sync_text_colors(root: tk.Tk, dark: bool, *widgets: tk.Text) -> None:
-    """Recolor plain tk.Text widgets to match the active ttk theme.
+def sync_text_colors(root: tk.Tk, dark: bool, *widgets: tk.Widget) -> None:
+    """Recolor plain tk.Text/Listbox widgets to match the active ttk theme.
 
     sv-ttk only themes ttk widgets, so the Text boxes (and the root
     background) are synced from the live style instead of hardcoded
@@ -211,9 +211,13 @@ def sync_text_colors(root: tk.Tk, dark: bool, *widgets: tk.Text) -> None:
     if frame_bg:
         root.configure(background=frame_bg)
     for widget in widgets:
-        widget.configure(background=bg, foreground=fg, insertbackground=fg,
+        widget.configure(background=bg, foreground=fg,
                          selectbackground=select_bg,
                          selectforeground=select_fg)
+        try:
+            widget.configure(insertbackground=fg)
+        except tk.TclError:
+            pass  # e.g. Listbox has no insertion cursor
 
 
 AUTH_HELP = (
@@ -538,6 +542,20 @@ class App:
         self.progress = ttk.Progressbar(right, mode="determinate")
         self.progress.grid(row=7, column=0, sticky="ew", pady=(2, 0))
 
+        self.missed_label = ttk.Label(right, text="Missed tracks: none yet.")
+        self.missed_label.grid(row=8, column=0, sticky="w", pady=(12, 4))
+        missed_box = ttk.Frame(right)
+        missed_box.grid(row=9, column=0, sticky="ew")
+        missed_box.columnconfigure(0, weight=1)
+        self.missed_list = tk.Listbox(missed_box, height=8,
+                                      activestyle="none",
+                                      font=("TkDefaultFont", 9))
+        missed_scroll = ttk.Scrollbar(missed_box, orient="vertical",
+                                      command=self.missed_list.yview)
+        self.missed_list.configure(yscrollcommand=missed_scroll.set)
+        self.missed_list.grid(row=0, column=0, sticky="ew")
+        missed_scroll.grid(row=0, column=1, sticky="ns")
+
         frame.rowconfigure(1, weight=1)
 
         self.dark_mode = False
@@ -657,7 +675,7 @@ class App:
         sv_ttk.use_dark_theme()
         self.dark_mode = True
         self.theme_btn.configure(state="normal", text="Theme: Light")
-        sync_text_colors(self.root, True, self.headers)
+        sync_text_colors(self.root, True, self.headers, self.missed_list)
 
     def toggle_theme(self) -> None:
         import sv_ttk
@@ -669,7 +687,7 @@ class App:
         self.theme_btn.configure(
             text="Theme: Light" if self.dark_mode else "Theme: Dark")
         sync_text_colors(self.root, self.dark_mode,
-                         self.headers)
+                         self.headers, self.missed_list)
 
     @staticmethod
     def _log_callback_exception(exc_type, exc_value, exc_traceback) -> None:
@@ -689,6 +707,8 @@ class App:
             return
         link = self.playlist_url()
         headers_raw = self.headers_text()
+        self.missed_list.delete(0, "end")
+        self.missed_label.configure(text="Missed tracks: searching…")
         self.set_running(True)
         self.show_overlay()
         self.worker = threading.Thread(
@@ -741,7 +761,19 @@ class App:
             result = event[1]
             self.status.configure(text="Done.")
             self.progress.configure(value=self.progress.cget("maximum"))
+            self.show_missed(result.get("missed") or [])
             self.show_finished_dialog(result)
+
+    def show_missed(self, missed: list) -> None:
+        """Fill the fixed-height missed-tracks list below the progress bar."""
+        self.missed_list.delete(0, "end")
+        for track in missed:
+            self.missed_list.insert("end", str(track))
+        if missed:
+            self.missed_label.configure(text=f"Missed tracks ({len(missed)}):")
+        else:
+            self.missed_label.configure(
+                text="Missed tracks (0) – all tracks found.")
 
     def show_finished_dialog(self, result: dict) -> None:
         """Completion popup with a clickable GitHub star link."""
@@ -764,8 +796,8 @@ class App:
         ).grid(row=0, column=0, sticky="w")
         ttk.Label(
             frame,
-            text="Enjoying SpotTransfer? It's free — please star "
-            "the project on GitHub, it helps a lot:",
+            text="Found SpotTransfer helpful? Please star "
+            "the project on GitHub, it's free and it helps a lot:",
             wraplength=360,
             justify="left",
         ).grid(row=1, column=0, sticky="w", pady=(12, 2))
