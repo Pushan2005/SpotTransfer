@@ -41,7 +41,7 @@ Despite these improvements, self-hosting remains the best option for large playl
 - Extended timeout to 15 minutes (from previous shorter timeouts)
 
 For the most reliable experience, especially with playlists over 100 songs, we recommend self-hosting SpotTransfer.`,
-        type: "warning",
+        type: "info",
     },
     {
         id: "4",
