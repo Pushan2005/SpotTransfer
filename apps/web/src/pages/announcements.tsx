@@ -1,6 +1,7 @@
 import { Footer } from "@/components/landing/footer";
 import Navbar from "@/nav-bar.tsx";
 import { Link } from "react-router-dom";
+import { useSeo } from "@/lib/seo.ts";
 
 interface Announcement {
     id: string;
@@ -158,6 +159,12 @@ function getTypeStyles(type: Announcement["type"]) {
 }
 
 export default function Announcements() {
+    useSeo({
+        title: "Announcements – SpotTransfer Updates",
+        description:
+            "Latest SpotTransfer updates, fixes and release notes for the tool.",
+        path: "/announcements",
+    });
     return (
         <main className="flex w-screen flex-col items-center">
             <div className="w-full max-w-[960px] px-4">

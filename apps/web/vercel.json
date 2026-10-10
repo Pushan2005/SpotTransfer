@@ -1,3 +1,11 @@
 {
+    "redirects": [
+        {
+            "source": "/:path*",
+            "has": [{ "type": "host", "value": "spot-transfer.vercel.app" }],
+            "destination": "https://spottransfer.pages.dev/:path*",
+            "permanent": true
+        }
+    ],
     "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

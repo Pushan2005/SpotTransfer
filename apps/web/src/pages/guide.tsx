@@ -5,6 +5,7 @@ import AppImg from "@/assets/app.png";
 import Navbar from "@/nav-bar";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { useSeo } from "@/lib/seo.ts";
 
 const headerSteps = [
     "Open music.youtube.com and sign in to your Google account.",
@@ -14,6 +15,12 @@ const headerSteps = [
 ];
 
 export default function Guide() {
+    useSeo({
+        title: "Usage Guide – Run SpotTransfer on Your Computer",
+        description:
+            "Step-by-step guide to use SpotTransfer: copy your YouTube Music headers, run the desktop app, and transfer your playlists. All data stays on your computer.",
+        path: "/guide",
+    });
     return (
         <main className="flex w-screen flex-col items-center">
             <div className="w-full max-w-[960px] px-4">
