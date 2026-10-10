@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://spot-transfer.vercel.app/sitemap.xml
+Sitemap: https://spottransfer.pages.dev/sitemap.xml
