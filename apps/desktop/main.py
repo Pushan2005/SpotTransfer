@@ -1,7 +1,9 @@
 """SpotTransfer desktop client (tkinter UI, no Bun/Node required).
 
-Run with plain Python — the transfer logic in selfhost.py (same folder) is
-reused, so this file only contains UI + worker-thread orchestration:
+main.py is the driver: it owns the UI and worker-thread orchestration,
+while the platform logic sits in sibling modules — spotify.py (source)
+and ytm.py (destination). Future platforms attach the same way, as a
+sibling module exposing the same function names:
 
     cd apps/desktop
     python main.py
@@ -137,25 +139,6 @@ def ensure_deps() -> None:
                                 *sys.argv[1:]])
 
 
-def load_backend():
-    """Import selfhost.py (same folder), with a friendly error if deps miss."""
-
-    try:
-        import selfhost  # noqa: F401  (imported for its helpers)
-
-        return selfhost
-    except ImportError as error:
-        raise RuntimeError(
-            "Could not import the transfer backend.\n\n"
-            f"Details: {error}\n\n"
-            "Install the desktop dependencies first:\n"
-            "  pip install -r requirements.txt  (from apps/desktop)\n"
-            "or run with the desktop venv interpreter:\n"
-            "  .venv/Scripts/python main.py   (Windows)\n"
-            "  .venv/bin/python main.py       (macOS/Linux)"
-        ) from error
-
-
 def load_progress() -> dict | None:
     if not PROGRESS_PATH.is_file():
         return None
@@ -242,11 +225,20 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
 
     logger.info("===== Transfer started (GUI) =====")
     try:
-        backend = load_backend()
-    except RuntimeError as error:
+        import spotify
+        import ytm
+    except ImportError as error:
         logger.exception("Could not load transfer backend")
         logger.info("===== Transfer failed (GUI setup) =====")
-        emit("failed", str(error), "setup")
+        emit("failed",
+             "Could not import the transfer platform code.\n\n"
+             f"Details: {error}\n\n"
+             "Install the desktop dependencies first:\n"
+             "  pip install -r requirements.txt  (from apps/desktop)\n"
+             "or run with the desktop venv interpreter:\n"
+             "  .venv/Scripts/python main.py   (Windows)\n"
+             "  .venv/bin/python main.py       (macOS/Linux)",
+             "setup")
         return
     except Exception as error:
         logger.exception("Unexpected failure loading transfer backend")
@@ -256,7 +248,7 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
 
     try:
         try:
-            playlist_id = backend.extract_spotify_playlist_id(playlist_link)
+            playlist_id = spotify.extract_playlist_id(playlist_link)
         except ValueError as error:
             logger.warning("Spotify playlist URL failed validation: %s", error)
             logger.info("===== Transfer failed (validation) =====")
@@ -294,10 +286,10 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
                                f"({fetched}/{total} items)")
 
             try:
-                playlist_name = backend.get_spotify_playlist_name(playlist_link)
+                playlist_name = spotify.get_playlist_name(playlist_link)
                 logger.info("===== Transfer started: '%s' (id=%s, GUI) =====",
                             playlist_name, playlist_id)
-                tracks, skipped = backend.get_spotify_tracks(
+                tracks, skipped = spotify.get_tracks(
                     playlist_id, on_page=on_fetch_page)
             except Exception as error:
                 logger.exception("Could not read Spotify playlist (GUI, id=%s)", playlist_id)
@@ -327,16 +319,15 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
                         skipped, playlist_name)
 
         try:
-            auth_config = backend.parse_browser_headers(auth_headers_raw)
+            auth_config = ytm.parse_headers(auth_headers_raw)
         except ValueError as error:
             logger.warning("YouTube Music headers failed validation: %s", error)
             logger.info("===== Transfer failed (validation) | '%s' =====", playlist_name)
             emit("failed", str(error), "validation")
             return
 
-        from ytmusicapi import YTMusic
         logger.info("Loading YouTube Music auth for '%s' (GUI)", playlist_name)
-        ytmusic = YTMusic(auth_config)
+        client = ytm.create_client(auth_config)
 
         video_ids: list[str] = list(progress.get("video_ids") or [])
         missed: list[str] = list(progress.get("missed_tracks") or [])
@@ -356,28 +347,15 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
             label = f"{name} - {', '.join(str(a) for a in artists)}"
             emit("status", f"Searching {index + 1}/{total}: {label}")
             try:
-                results = ytmusic.search(
-                    " ".join([name, *(str(a) for a in artists)]),
-                    filter="songs",
-                )
-                video_id = next(
-                    (r.get("videoId") for r in results
-                     if isinstance(r, dict) and r.get("videoId")),
-                    None,
-                )
-            except Exception as error:
-                if backend._is_auth_error(error):
-                    logger.exception(
-                        "YouTube Music authentication failed (GUI) at [%d/%d] '%s'",
-                        index + 1, total, label)
-                    logger.info("===== Transfer paused (auth expired) | '%s' =====",
-                                playlist_name)
-                    emit("failed", AUTH_HELP, "auth")
-                    return
+                video_id = ytm.search_track(client, track)
+            except ytm.AuthExpiredError:
                 logger.exception(
-                    "YouTube Music search failed (GUI) at [%d/%d] '%s'; treating as not found",
+                    "YouTube Music authentication failed (GUI) at [%d/%d] '%s'",
                     index + 1, total, label)
-                video_id = None
+                logger.info("===== Transfer paused (auth expired) | '%s' =====",
+                            playlist_name)
+                emit("failed", AUTH_HELP, "auth")
+                return
             if video_id is None:
                 missed.append(label)
                 logger.info("[%d/%d] YTM NOT FOUND: '%s'", index + 1, total, label)
@@ -412,28 +390,19 @@ def run_transfer(playlist_link: str, auth_headers_raw: str,
         logger.info("Creating YouTube Music playlist '%s' with %d tracks (GUI)",
                     playlist_name, len(video_ids))
         try:
-            created_id = ytmusic.create_playlist(
-                playlist_name, "", "PRIVATE", video_ids)
+            created_id = ytm.create_playlist(client, playlist_name, video_ids)
+        except ytm.AuthExpiredError:
+            logger.exception("YouTube Music authentication failed creating playlist for '%s'",
+                             playlist_name)
+            logger.info("===== Transfer paused (auth expired) | '%s' =====",
+                        playlist_name)
+            emit("failed", AUTH_HELP, "auth")
+            return
         except Exception as error:
-            if backend._is_auth_error(error):
-                logger.exception("YouTube Music authentication failed creating playlist for '%s'",
-                                 playlist_name)
-                logger.info("===== Transfer paused (auth expired) | '%s' =====",
-                            playlist_name)
-                emit("failed", AUTH_HELP, "auth")
-                return
             logger.exception("Could not create YouTube Music playlist for '%s'",
                              playlist_name)
             logger.info("===== Transfer failed (create) | '%s' =====", playlist_name)
             emit("failed", f"Could not create the playlist: {error}", "error")
-            return
-        if not created_id:
-            logger.error("YouTube Music did not return a playlist ID for '%s'",
-                         playlist_name)
-            logger.info("===== Transfer failed (no playlist ID) | '%s' =====",
-                        playlist_name)
-            emit("failed", "YouTube Music did not return a playlist ID.",
-                 "error")
             return
 
         clear_progress()
@@ -844,14 +813,16 @@ def self_check() -> int:
     print(f"python: {sys.version.split()[0]}")
     print("tkinter: import ok")
     try:
-        backend = load_backend()
-    except RuntimeError as error:
-        print(f"backend: MISSING\n{error}")
+        import spotify
+        import ytm
+    except ImportError as error:
+        print(f"platform modules: MISSING\n{error}")
         return 1
-    for helper in ("extract_spotify_playlist_id", "get_spotify_playlist_name",
-                   "get_spotify_tracks", "parse_browser_headers"):
-        assert callable(getattr(backend, helper, None)), helper
-    print(f"transfer logic: {BASE_DIR} (selfhost helpers ok)")
+    for helper in (spotify.extract_playlist_id, spotify.get_playlist_name,
+                   spotify.get_tracks, ytm.parse_headers, ytm.create_client,
+                   ytm.search_track, ytm.create_playlist):
+        assert callable(helper), helper
+    print(f"platform modules: {BASE_DIR} (spotify.py + ytm.py ok)")
     try:
         import ytmusicapi  # noqa: F401
         import spotapi  # noqa: F401
